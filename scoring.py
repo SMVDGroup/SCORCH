@@ -258,30 +258,16 @@ def test(params):
     cmd_params = binana.CommandLineParameters(params['binana_params'].copy())
     features = extract(cmd_params)
     results = []
-    if params['mlpscore_single'] == True:
-        df = transform_df(features, single=True)
-        mlp_result = run_networks(params['num_networks'],df,'mlpscore_single')
-        results.append(mlp_result)
 
     if params['mlpscore_multi'] == True:
         df = transform_df(features, single=True)
         mlp_result = run_networks(params['num_networks'],df,'mlpscore_multi')
         results.append(mlp_result)
 
-    if params['wdscore_single'] == True:
-        df = transform_df(features, single=True)
-        mlp_result = run_networks(params['num_networks'],df,'wdscore_single')
-        results.append(mlp_result)
-
     if params['wdscore_multi'] == True:
         df = transform_df(features, single=True)
         mlp_result = run_networks(params['num_networks'],df,'wdscore_multi')
         results.append(mlp_result)
-
-    if params['xgbscore_single'] == True:
-        df = transform_df(features, single=True)
-        xgb_result = run_xgbscore(df, single=True)
-        results.append(xgb_result)
 
     if params['xgbscore_multi'] == True:
         df = transform_df(features, single=False)
@@ -364,7 +350,7 @@ def parse_args(args):
         except:
             params['out'] = False
 
-        models = ['-mlpscore_single','-mlpscore_multi','-wdscore_single','-wdscore_multi','-xgbscore_single','-xgbscore_multi']
+        models = ['-mlpscore_multi','-wdscore_multi','-xgbscore_multi']
         args_check = list(map(lambda v: v in args, models))
         if any(args_check):
             for model, check in zip(models,args_check):
@@ -493,17 +479,9 @@ def score(models):
 
     model_file = models[1]
 
-    single_features = models[2]
-
-    multi_features = models[3]
-
+    features = models[2]
 
     logging.info(f'Scoring with {model_name}...')
-
-    if 'multi' in model_name:
-        features = multi_features
-    else:
-        features = single_features
 
     results = features[['Ligand','Receptor']].copy().reset_index(drop=True)
     df = features.drop(['Ligand','Receptor'], axis=1)
@@ -598,38 +576,6 @@ def prepare_models(params):
     logging.info('Model Request Summary:\n')
 
     models = {}
-    if params['xgbscore_single']:
-
-        logging.info(f'XGBoost Single-pose Model: Yes')
-        xgb_path = os.path.join('utils','models','xgbscore','490_models_14_booster.pkl')
-        models['xgbscore_single'] = pickle.load(open(xgb_path,'rb'))
-    else:
-
-        logging.info(f'XGBoost Single-pose Model: No')
-
-    if params['mlpscore_single']:
-
-        logging.info(f'ANN Single-pose Model : Yes')
-        logging.info(f'- Using Best {params["num_networks"]} Networks')
-        models['mlpscore_single'] = os.path.join('utils','models','mlpscore_single')
-        model_ranks = pickle.load(open(os.path.join(models['mlpscore_single'],'rankings.pkl'),'rb'))
-        model_ranks = model_ranks[:params["num_networks"]]
-        models['mlpscore_single'] = [os.path.join(models['mlpscore_single'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
-    else:
-
-        logging.info(f'ANN Single-pose Model: No')
-
-    if params['wdscore_single']:
-
-        logging.info(f'WD Single-pose Model : Yes')
-        logging.info(f'- Using Best {params["num_networks"]} Networks')
-        models['wdscore_single'] = os.path.join('utils','models','wdscore_single')
-        model_ranks = pickle.load(open(os.path.join(models['wdscore_single'],'rankings.pkl'),'rb'))
-        model_ranks = model_ranks[:params["num_networks"]]
-        models['wdscore_single'] = [os.path.join(models['wdscore_single'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
-    else:
-
-        logging.info(f'WD Single-pose Model: No')
 
     if params['xgbscore_multi']:
 
@@ -764,16 +710,13 @@ def scoring(params):
     features = multiprocess_wrapper(prepare_features, receptor_ligand_args, params['threads'])
     feature_headers = list(features[0][2])
     features_df = binary_concat([i[2] for i in features], feature_headers)
-    single_pose_features = transform_df(features_df, single=True)
-    single_pose_features['Receptor'] = [i[0] for i in features]
-    single_pose_features['Ligand'] = [i[1] for i in features]
     multi_pose_features = transform_df(features_df, single=False)
     multi_pose_features['Receptor'] = [i[0] for i in features]
     multi_pose_features['Ligand'] = [i[1] for i in features]
 
     models = prepare_models(params)
     models = list(models.items())
-    models = [(m[0], m[1], single_pose_features, multi_pose_features) for m in models]
+    models = [(m[0], m[1], multi_pose_features) for m in models]
 
     model_results = list()
 
@@ -786,35 +729,22 @@ def scoring(params):
 
     merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
 
-    single_models = ['xgbscore_single',
-                     'mlpscore_single_best_average',
-                     'wdscore_single_best_average']
-
     multi_models = ['xgbscore_multi',
                     'mlpscore_multi_best_average',
                     'wdscore_multi_best_average']
 
-    merged_results['single_consensus'] = merged_results[single_models].mean(axis=1)
     merged_results['multi_consensus'] = merged_results[multi_models].mean(axis=1)
-    merged_results['single_consensus_stdev'] = merged_results[single_models].std(axis=1, ddof=0)
     merged_results['multi_consensus_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
-    merged_results['single_consensus_range'] = merged_results[single_models].max(axis=1) - merged_results[single_models].min(axis=1)
     merged_results['multi_consensus_range'] = merged_results[multi_models].max(axis=1) - merged_results[multi_models].min(axis=1)
 
     if params['concise']:
         merged_results = merged_results[['Receptor',
                                          'Ligand',
-                                         'xgbscore_single',
-                                         'mlpscore_single_best_average',
-                                         'wdscore_single_best_average',
                                          'xgbscore_multi',
                                          'mlpscore_multi_best_average',
                                          'wdscore_multi_best_average',
-                                         'single_consensus',
                                          'multi_consensus',
-                                         'single_consensus_stdev',
                                          'multi_consensus_stdev',
-                                         'single_consensus_range',
                                          'multi_consensus_range']].copy()
 
     return merged_results
