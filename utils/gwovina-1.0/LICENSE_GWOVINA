@@ -1,0 +1,48 @@
+=======================================================================
+GWOVina version 1.0                                                    
+
+Michael K. M. Wong & Shirley W. I. Siu                                   
+                                                                       
+Computational Biology and Bioinformatics Lab (CBBio)                        
+University of Macau                                                    
+                                                                       
+Visit http://cbbio.cis.umac.mo for more information.                   
+                                                                       
+GWOVina was developed based on the framework of AutoDock Vina.                                                                                
+For more information about Vina, please visit http://vina.scripps.edu.                                                                       
+=======================================================================
+
+OPEN SOURCE LICENSE
+Copyright (c) 2020-present  University of Macau
+All rights reserved.
+
+Permission is hereby granted, free of charge, to use, copy, modify, 
+distribute this software and associated documentation files subject to 
+the following conditions:
+
+1. Publications resulted from the use of this software should cite papers 
+   suggested in CBBio homepage http://cbbio.cis.umac.mo/
+     
+2. All materials developed as a consequence of the use of this software 
+   shall duly acknowledge such use. In particular, if you use this software 
+   in any way (e.g. as part of the computation workflow or on any internet,
+   intranet site), you must include a link to CBBio home page at 
+   http://cbbio.cis.umac.mo/
+  
+3. Redistributions of source code or binary form must retain this license 
+   file.
+
+4. Any commercial use of this software is not allowed. 
+
+5. This software was developed based on Autodock Vina. The use of the source 
+   codes or the object form from Vina are subject to their terms and 
+   conditions. See the files LICENSE_VINA and NOTICES_VINA.
+
+        
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL 
+THE CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR 
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+WITH THE SOFTWARE.

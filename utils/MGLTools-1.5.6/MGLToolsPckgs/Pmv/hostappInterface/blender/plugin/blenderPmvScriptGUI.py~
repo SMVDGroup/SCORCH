@@ -1,0 +1,1729 @@
+#!BPY
+
+"""
+Name: 'Python Molecular Viewer GUI'
+Blender: 249.2
+Group: 'System'
+Tooltip: 'Molecular Viewer'
+"""
+
+__author__ = "ludovic autin"
+__url__ = ["www.blender.org", "blenderartists.org", "www.python.org"]
+__bpydoc__ = """\
+ePMV v0.1axxx
+Use Blender as a molecular viewer
+
+Provide gui interface to load and display Molecule Object (from pdb file for instance)
+-load .pdb,.pdbqt,.pqr,.mol2,.cif
+-display as CPK,Ball&Stick,Ribbon, MSMS and Coarse Molecular Surface
+-color by: color,atom type, david goodsell atom type, resiude type, secondary structure type
+-selection : any molecule levele MOL:CHAIN:RESIDUE:ATOM using keyword and picking functionality
+-option available for : CPK, BS, CMS, MSMS under object selection...
+"""
+
+# -------------------------------------------------------------------------- 
+# ***** BEGIN GPL LICENSE BLOCK ***** 
+# 
+# This program is free software; you can redistribute it and/or 
+# modify it under the terms of the GNU General Public License 
+# as published by the Free Software Foundation; either version 2 
+# of the License, or (at your option) any later version. 
+# 
+# This program is distributed in the hope that it will be useful, 
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details. 
+# 
+# You should have received a copy of the GNU General Public License 
+# along with this program; if not, write to the Free Software Foundation, 
+# Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA. 
+# 
+# ***** END GPL LICENCE BLOCK ***** 
+# -------------------------------------------------------------------------- 
+    
+
+#general import
+import sys
+import os
+import re
+#MGL_ROOT=os.environ['MGL_ROOT']
+
+MGL_ROOT=	#'/Library/MGLTools/1.5.6.csv'
+sys.path[0]=(MGL_ROOT+'/lib/python2.5/site-packages')
+sys.path.append(MGL_ROOT+'/lib/python2.5/site-packages/PIL')
+sys.path.append(MGL_ROOT+'/MGLToolsPckgs')
+
+#user path?
+#append Modeller
+sys.path.append('/Library/modeller-9v8/modlib/python2.5')
+sys.path.append('/Library/modeller-9v8/modlib')
+
+from Pmv.hostappInterface.blender.blenderAdaptor import blenderAdaptor
+from Pmv.hostappInterface.blender import blenderHelper
+from Pmv.moleculeViewer import EditAtomsEvent
+from Pmv.hostappInterface import lightGridCommands as lG
+
+from Pmv.hostappInterface.install_plugin import Installer
+
+from MolKit.molecule import Atom
+from MolKit.protein import ResidueSet,ResidueSetSelector
+from Pmv.pmvPalettes import AtomElements
+#Blender import 
+import Blender
+from Blender import Registry
+from Blender import BGL
+from Blender import Image
+import bpy
+
+#extension
+_AR=False
+_AF=False
+_useModeller=False
+listExtension=[]
+listOptionsMenu=["loadPDB","loadData",'update']
+
+print "ok update"
+
+class ParameterModeller():
+    def __init__(self):
+        #minimize options
+        #max_iterations=1000
+        #md options
+        #temperature=300, max_iterations=1000
+        id=0
+        self.NUMBERS = {"miniIterMax":{"id":id,"name":"max_it mini",'width':50,"height":10,"action":None,"value":Blender.Draw.Create(100.0)},
+                        "mdIterMax":{"id":id+1,"name":"max_it MD",'width':50,"height":10,"action":None,"value":Blender.Draw.Create(100.0)},
+                        "mdTemp":{"id":id+2,"name":"temp MD",'width':50,"height":10,"action":None,"value":Blender.Draw.Create(300.)}
+                        }
+        id = id + 3
+        self.BTN = {"mini":{"id":id,"name":"minimize",'width':50,"height":10,"action":None,"value":Blender.Draw.Create(0)},
+                    "md":{"id":id+1,"name":"MD",'width':50,"height":10,"action":None,"value":Blender.Draw.Create(0)},
+                    "store":{"id":id+2,"name":"store",'width':100,"height":10,"action":None,"value":Blender.Draw.Create(0)}
+                    }
+        self.block=[]
+        self.CreateLayout()
+
+    def CreateLayout(self):
+        ID=0
+        title = "Options"
+        #minimize otin/button
+        for numb in self.NUMBERS:
+            self.block.append( (self.NUMBERS[numb]["name"],self.NUMBERS[numb]['value'],0.0,1000.)  )
+        for numb in self.BTN:
+            self.block.append( (self.BTN[numb]["name"],self.BTN[numb]['value'],numb)  )
+    
+
+def checkExtension():
+    global _useModeller,_AF,_AR
+    global listExtension
+    if not _useModeller:
+        try :
+            import modeller
+            _useModeller = True
+            listExtension.append('modeller')
+        except:
+            print "noModeller"
+    if not _AF:
+        try :
+            import AutoFill
+            _AF = True
+            listExtension.append('AutoFill')
+        except:
+            print "noAutoFill"
+    if not _AR:
+        try :
+            import ARViewer
+            _AR = True
+            listExtension.append('ARViewer')
+        except:
+            print "noARViewer"
+
+LOG = 0
+VERBOSE = 0
+
+selections={}
+
+self=None
+epmv=None
+
+print "BEFORE"
+
+def update_Registry():
+   d = {}
+   d['self'] = self
+   d['epmv'] = epmv
+   #if self.Mols : 
+   #    if hasattr(self.Mols[0].geomContainer.geoms['cpk'],'obj') : 
+   #        d['obj'] = self.Mols[0].geomContainer.geoms['cpk'].obj
+   Blender.Registry.SetKey('bmv', d, False)
+
+sc=Blender.Scene.GetCurrent()
+
+rdict = Registry.GetKey('bmv', False) # True to check on disk also
+print rdict
+if rdict and 'self' in rdict.keys() : 
+    self = rdict['self']
+    epmv = rdict['epmv']
+    if VERBOSE : print "redo"
+    #print self,self.Mols.name
+    if self == None :
+        if VERBOSE : print "self none"
+        epmv = blenderAdaptor(debug=1)
+        self = epmv.mv     
+        self.armObj = None
+        self.selections=selections
+        update_Registry()
+    else : 
+        if VERBOSE : 
+            print "ok in registry ",self,self.Mols.name
+            print self.Mols[0].geomContainer.masterGeom.chains_obj
+else :
+    if VERBOSE : print "no registration"
+    epmv = blenderAdaptor(debug=1)
+    self = epmv.mv
+    self.armObj = None
+    self.selections=selections
+    update_Registry()
+
+#check available extension
+checkExtension()
+
+env=None
+if _useModeller :
+    import modeller
+    #setup Modeller
+    env = modeller.environ()
+    MPATH=MGL_ROOT+'/MGLToolsPckgs/Pmv/hostappInterface/extension/Modeller/'
+    env.io.atom_files_directory = [MPATH]
+    env.edat.dynamic_sphere = True
+    env.libs.topology.read(file='$(LIB)/top_heav.lib')
+    env.libs.parameters.read(file='$(LIB)/par.lib')
+    epmv.useModeller = True
+    
+Banner = Image.Load(MGL_ROOT+'/MGLToolsPckgs/Pmv/hostappInterface/images/banner.jpg')
+
+if not hasattr(self ,'molDispl') : self.molDispl={}
+if not hasattr(self,'MolSelection') : self.MolSelection={}
+if not hasattr(self,'iMolData') : self.iMolData={}
+#define the options
+epmv.use_progressBar = True
+epmv.bicyl = True
+self.hostApp.driver.bicyl = True
+
+strDataSupported = lG.getSupportedFormat()
+
+if VERBOSE :  print self,self.Mols
+selections=self.selections
+RS=ResidueSetSelector()
+Draw=Blender.Draw
+
+stringName = Draw.Create("")
+dataName = Draw.Create("")
+Menupreset = Draw.Create(1)
+ColorPreset1= Draw.Create(1)
+ColorPreset2= Draw.Create(1)
+ExportPreset= Draw.Create(1)
+Shapepreset = Draw.Create(1)
+stringSelection = Draw.Create("")
+ColorMol= Draw.Create(1)
+molPreset= Draw.Create(1)
+
+#pmvcmds = bpy.data.texts.new('pythonscript.py')#Draw.Create("put python script or PMV commmands here")
+#pmvcmds.write("'put python script or PMV commmands here'")
+
+molMenu = {}
+
+baseIndice=[50,100,150,200,250,300,350,400,450,500]
+baseISel=[600,700,800,900,1000,1100,1200,1300]
+check=599
+
+line = [None,None,None,None,None,None,None,None,None,None,None,None,None,
+        None,None,None,None,None,None,None]
+init=50
+step=30
+line[0]=init
+for i in range(1,len(line)):
+    line[i]=line[i-1]+30
+
+EV_BT_OK = 1
+EV_BT_CANCEL = 2
+EV_ST_PDBNAME = 3
+
+EV_TG_BKBONE = 4
+EV_TG_ARMATURE = 5
+EV_TG_SURF = 6
+EV_TG_VDW = 7
+EV_ME_MESH = 8
+EV_TG_SS = 9
+EV_TG_BSTICK = 10
+EV_TG_TUBE = 11
+EV_TG_CAT = 12
+EV_TG_COL1 = 13
+EV_ME_COL = 14
+EV_TG_COL2 = 15
+EV_TG_JOIN1 = 16
+EV_TG_JOIN2 = 17
+EV_TG_JOIN3 = 18
+EV_BT_EX = 19
+EV_ME_EXPOR = 20
+EV_ME_BEZIER = 21
+EV_BT_LOAD = 22
+EV_TG_DEL = 23
+EV_ST_SELECTION = 24
+EV_BT_ADD = 25
+EV_BT_MODIF = 26
+EV_TG_ONLY = 27
+EV_BT_CHOOSE = 28
+EV_CPKRAD = 29
+EV_CPKSCALE = 30
+EV_CPKOPT = 31
+EV_MSOPT = 32
+EV_BSOPT = 33
+EV_CMSOPT = 34
+
+EV_ST_DATA = 35
+EV_BT_DLOAD = 36
+EV_BT_DCHOOSE = 37
+EV_DOPT = 38
+EV_BT_EXECUTE = 39
+EV_ST_PMV = 40
+
+EV_BT_MENU=41
+EV_BT_EXT=42
+EV_BT_OPT=43
+
+
+ev_del=100
+ev_vdw=101
+ev_surf=102
+ev_cms=103
+ev_bs=104
+ev_ss=105
+ev_col=106
+ev_sel=107
+ev_pcol=108
+ev_data=109
+ev_mol=110
+ev_2key = 111
+ev_meta = 112
+ev_spline = 113
+
+ev_slider=120
+ev_mod=121
+selColorPreset=Draw.Create(1)
+dataMenu = Draw.Create(1)
+data_slider = Draw.Create(0.)
+data_start = Draw.Create(1)
+data_end = Draw.Create(1)
+data_step = Draw.Create(1)
+
+
+LSURF=Draw.Create(0)#(0)
+LCMS=Draw.Create(0)#(0)
+LMETA=Draw.Create(0)#(0)
+LSPLINE=Draw.Create(0)
+LVDW=Draw.Create(0)#(0)
+LSS=Draw.Create(0)#(0)
+LBSTICK=Draw.Create(0)#(0)
+LRIB=Draw.Create(0)#(0)
+LCOLOR=(0)
+LKEY=(0)
+
+cpkopt={}
+for k,v in self.displayCPK.lastUsedValues['default'].items():
+    if type(v) == type(None) : continue
+    elif type(v) == bool : cpkopt[k]=Draw.Create(int(v))
+    else : cpkopt[k]=Draw.Create(v)
+
+bsopt={}
+for k,v in self.displaySticksAndBalls.lastUsedValues['default'].items():
+    if type(v) == type(None) : continue
+    elif type(v) == bool : bsopt[k]=Draw.Create(int(v))
+    else : bsopt[k]=Draw.Create(v)
+bsopt["ratio"] = Draw.Create(1.5)
+#bsopt['bScale']= Draw.Create(1.)
+
+msmsopt={}
+for k,v in self.computeMSMS.lastUsedValues['default'].items():
+    if type(v) == type(None) : continue
+    elif type(v) == bool : msmsopt[k]=Draw.Create(int(v))
+    else : msmsopt[k]=Draw.Create(v)
+
+cmsopt={}
+cmsopt["iso"] = Draw.Create(7.1)
+cmsopt["res"] = Draw.Create(-0.3)
+
+ColorMol=Draw.Create(0.,0.,0.)
+ColorSel=Draw.Create(0.,0.,0.)
+
+BKBONE = 0
+ARMATURE = 0
+COARSE = 0
+SURF = 0
+VDW = 0
+SS = 0
+BSTICK = 0
+TUBE = 0
+CAT = 0
+COLOR1=0
+COLOR2=0
+JOIN1=0
+JOIN2=0
+JOIN3=0
+EXPORT=0
+DASH=0
+DEL=0
+ONLY=0
+
+
+stringMesh = ["Sphere","Cube","Mb"]
+funcColor = [self.colorByAtomType,
+             self.colorAtomsUsingDG,
+             self.colorByProperty,
+             self.colorByResidueType,
+             self.colorResiduesUsingShapely,
+             self.colorBySecondaryStructure,
+             self.color]
+
+stringBezier = ["Circle","Square"]
+
+mesh_objects = {}
+indice_objects = {
+'SURF':0,
+'CMS':0,
+'VDW':0,
+'SS': 0,
+'BSTICK' : 0,
+'TUBE' : 0
+}
+
+#data player default option
+slider_min = 0 
+slider_max = 1000
+typedata = "frame :"
+#mol_data = self.iMolData
+
+def getSelectionLevel(mol):
+    #fix...problem if multiple chain...
+    R=mol.chains[0].residues
+    sel=mol.name
+    if BKBONE == 1 :
+            sel=ResidueSet(R.copy())
+            for i in range(len(R)) :
+                sel[i].atoms=sel[i].backbone()
+                #remove O
+                sel[i].atoms=sel[i].atoms.get("N,CA,C")
+            #sel.atoms=sel.atoms.get("CA,C,N") #backbone()
+    if CAT == 1 :
+            sel=ResidueSet(R.copy())
+            #sel.atoms=sel.atoms.get("CA")
+            for i in range(len(R)) :
+                sel[i].atoms=sel[i].atoms.get("CA")
+            #sel=mol.name+':::CA'
+    return sel
+
+def Make():
+    global pdb,radius,mesh_objects,sc
+    #molname=os.path.splitext(os.path.basename(stringName.val))[0]
+    if VERBOSE :print "the name ",stringName.val
+    string=stringName.val
+    P=self.getMolFromName(str(stringName.val).split(":")[0])
+    
+    if VERBOSE : print P
+    armObj = None
+    if ARMATURE == 1 : #always on CA-backbone
+        #if CAT == 0 and BKBONE == 0 :
+        state=string.split(":") # MOL : CH : AA : ATMS
+        select=self.select(string,negate=False, only=True, xor=False, 
+                           log=0, intersect=False)
+        sel=select.findType(Atom)
+        atoms=sel#.get(state[-1])
+        if len(state) < 4 or state[3] == 'CA' : 
+            atoms=sel.get("CA")
+            armObj=blenderHelper.armature("Armature_obj",atoms,sc)
+        elif len(state[3]) == 1 :
+            atoms=sel.get(state[3])
+            armObj=blenderHelper.armature("Armature_obj",atoms,sc)
+        else : 
+            #atoms=sel#.get(state[3])
+            atoms.sort()            
+            armObj=blenderHelper.armature("Armature_obj",atoms,sc)
+            #armObj=bond_armature("Armature_obj",atoms,sc)
+    Blender.Window.CameraView()
+        #for keys in mesh_objects :
+        #           print keys
+        #           print mesh_objects[keys]
+
+def get_children(ob):
+    return [ob_child for ob_child in Blender.Object.Get() if ob_child.parent == ob]
+
+def getAllRelatedGeom(molname):
+    listO = Blender.Object.Get()
+    liste = filter(lambda x: x.name.find(molname) != -1, listO)
+    return liste
+    
+def delMolDic(molname):
+    del self.selections[molname]
+    del self.iMolData[molname]
+    del self.molDispl[molname]
+    del self.MolSelection[molname]
+
+def delGeomMol(mol):
+    #put in the helper
+    #scene.unlink
+    #first go throught the geom and del all attribute / unlink all obj
+    #get the master
+    liste = getAllRelatedGeom(mol.name)
+    for ch in liste :
+        sc.objects.unlink(ch)
+    #need to delete the sticks as they do not show molname
+    sticks = mol.geomContainer.geoms['sticks']
+    if hasattr(sticks,'obj'):
+        for o in sticks.obj:
+            sc.objects.unlink(o)
+    
+def getMolName():
+    global molMenu
+    ind = molPreset.val - 1 #start at 1
+    name = molMenu[ind]
+    if name in self.Mols.name:
+        mol = self.getMolFromName(name)
+    else : #selection
+        for mname in self.selections:
+            if name in self.selections[mname].keys() : 
+                mol = self.getMolFromName(mname)
+                break
+    return name,mol
+
+def getGeomActive(name):
+    lgeomName=[]
+    mname,mol=getMolName()   
+    #sel=getSelectionLevel(mol)
+    #Sel = parseSelection(stringSelection.val,mol)
+    #selname=getSelectionName(sel,mol)   
+    if LSURF.val : 
+        sname='MSMS-MOL'+str(mname)
+        #if sel != str(mname) :sname='MSMS-MOL'+str(selname)
+        lgeomName.append(sname)
+    if LCMS.val :
+        sname='CoarseMS_'+str(mname)
+        #if sel != str(mname) :sname='CoarseMS_'+str(selname)       
+        lgeomName.append(sname)
+    if LVDW.val : lgeomName.append('cpk')
+    if LSS.val : lgeomName.append('secondarystructure')
+    if LBSTICK.val : 
+        lgeomName.append('balls')
+        lgeomName.append('sticks')
+    return lgeomName
+
+def sortName1(array):
+    mols=[]
+    chain={}
+    res={}
+    atoms={}
+    for element in array:
+        if ":" in element :
+            levels=element.split(":")
+            if levels[0] not in mols : 
+                mols.append(levels[0])
+                chain[levels[0]]=[]
+            if levels[1] not in chain[levels[0]] : 
+                chain[levels[0]].append(levels[1])
+                res[levels[1]]=[]
+            if levels[2] not in res[levels[1]] : 
+                res[levels[1]].append(levels[2])
+                atoms[levels[2]]=[]
+            if levels[23] not in res[levels[2]] : 
+                atoms[levels[2]].append(levels[1])
+        else :  #only mol name present
+            return element
+    
+def sortName(array):
+    stringselection=""
+    for element in array:
+        if ":" in element :
+            stringselection+=element+";"
+        else : return element
+    return stringselection            
+
+def parseObjectName(o):
+    name=o.name
+    tmp=name.split("_")
+    if len(tmp) == 1 : #no "_" so not cpk (S_) or ball (B_) stick (T_) or Mesh (Mesh_)
+       return ""
+    else :
+       if "MSMS" in name : 
+           return name.split("MSMS-MOL")[1][:-1]         #the mol name
+       elif o.parent.name == "secondarystructur" : 
+           return name.split("_")[1]    #the mol name
+       else :
+          if tmp[0] == "S" or tmp[0] == "B" : 
+              return tmp[1]
+          else : 
+              return [tmp[1],tmp[2]]
+
+def parseSelection(string,mol):
+    strselection=""
+    if string == "picked" : 
+        if VERBOSE :print sc.objects.selected
+        astr=[]
+        for o in sc.objects.selected : 
+            if VERBOSE : print o.name,o.type
+            astr.append(parseObjectName(o))
+        strselection=sortName(astr)
+        if VERBOSE : print strselection
+        return strselection
+    elif string.upper() == "BACKBONE": return mol.name+":::CA,C,N;"
+    elif string.upper() == "SIDECHAIN": return mol.name+":::sidechain;"
+    elif string.upper()[0:5] == "CHAIN" : return mol.name+":"+string.upper()[5:].replace(" ","")+"::;"
+    elif string.upper() in AtomElements.keys() : return mol.name+":::"+string.upper()
+    elif string.upper() in RS.r_keyD.keys() : return mol.name+"::"+RS.r_keyD[string.upper()]
+    elif string.lower() in ResidueSetSelector.residueList.keys() : return mol.name+'::'+string.lower()+':'
+    else : return mol.name
+
+def getSelectionName(sel,mol):
+       for selname in self.selections[mol.name].keys() : 
+           if sel == self.selections[mol.name][selname][0] : return selname           
+       return mol.name+"_Selection"+str(len(self.MolSelection[mol.name]))
+
+def operateSelection(selname,selection,mol):
+    #self.selections[name][selname] ie 'CA', [0, 1, 0, 0], 'byAtomType' string selection, display,color
+    #need to add CMS
+    dis=selection[1]
+    print dis
+    string=parseSelection(selection[0],mol)
+    lGeom=getGeomActive(mol.name)
+    self.select.clear()
+    if VERBOSE :print "ok selection ",string
+      #if dis[0] : #cpk
+    if dis[0] : 
+        self.displayCPK(string,log=LOG,negate=(not bool(LVDW.val)),
+                        only=bool(ONLY))
+    #if dis[1] : #b&s
+    if dis[1] : 
+        self.displaySticksAndBalls(string, log=1, cquality=0, 
+                                   sticksBallsLicorice='Sticks and Balls', 
+                                   bquality=0, cradius=0.2, bRad=0.3,
+                                   negate=(not bool(LBSTICK.val)), 
+                                   bScale=0.0,only=bool(ONLY))
+    if dis[3] : 
+        if selname in mol.geomContainer.geoms : 
+            self.displayMSMS(string, negate=(not bool(LSURF.val)), 
+            only=bool(ONLY), log=1, surfName='MSMS-MOL'+selname, nbVert=1)
+        else : 
+            self.computeMSMS(string, log=1, display=(bool(LSURF.val)), 
+                             surfName='MSMS-MOL'+selname,perMol=0)
+    if dis[2] : 
+        self.displayExtrudedSS(string, negate=(not bool(LSS.val)), 
+                               only=bool(ONLY), log=1)        
+    if dis[5] != None :
+        if int(dis[5]) == 7 : 
+           #apply the color on the molecule geometry if no selection geometry displayed
+           if len(lGeom) == 0 :
+               lGeom=getGeomActive(mol.name)
+           funcColor[int(dis[5])-1](string,[dis[6]], lGeom, log=1)
+        elif int(dis[5]) == 3 :
+                self.colorByProperty.level='Atom'
+                selection = self.select(Sel,negate=False, only=True, xor=False, 
+                                           log=0, intersect=False)
+                if not isinstance(selection,Atom) : 
+                    selection = selection.findType(Atom)
+                max = len(selection)         
+                funcColor[2](selection, lGeom, 'number',mini=1.0,
+                                            maxi=float(max), propertyLevel='Atom', 
+                                            colormap='rgb256',log=1)
+        else : funcColor[int(dis[5])-1](string, lGeom, log=1)
+
+
+def checkNumberOfLine(indl,k):
+    if (indl+k) >= len(line) :
+        line.append(line[-1]+30)        
+
+def drawCPKoption(iline):
+    minV=0.
+    maxV=10.
+    cpkopt['cpkRad']=Draw.Slider('cpkRad:', EV_CPKOPT, 5, line[iline], 200, 25,
+                                cpkopt['cpkRad'].val, minV, maxV, 0, 
+                                'the radii of the sphere is cpkRadii+vdwRadii*scale')
+    cpkopt['scaleFactor']=Draw.Slider('scaleFactor:', EV_CPKOPT, 5, line[iline+1], 
+                                    200, 25,cpkopt['scaleFactor'].val, minV, maxV, 
+                                    0, 'the radii of the sphere is cpkRadii+vdwRadii*scale')
+    BGL.glRasterPos2i(5,line[iline+2])
+    Draw.Text("DisplayCPK options:")
+    return iline+3
+
+def drawBSoption(iline):
+    #only, negate, bRad,
+    #bScale, bquality, cradius, cquality,
+    #sticksBallsLicorice,redraw
+    minV=0.
+    maxV=10.
+    bsopt['bScale']=Draw.Slider('scale:', EV_BSOPT, 5, line[iline], 200, 25,
+                                bsopt['bScale'].val, minV, maxV, 0, 'scale')
+    bsopt["ratio"]=Draw.Slider('ratio B/S:', EV_BSOPT, 5, line[iline+1], 200, 
+                                25,bsopt['ratio'].val, minV, maxV, 0, 
+                                'the ratio ball size/stick size')
+    BGL.glRasterPos2i(5,line[iline+2])
+    Draw.Text("displaySticksAndBalls options:")
+    return iline+3
+
+def drawMSMSoption(iline):
+    #msmsopt['perMol']=
+    msmsopt['pRadius']=Draw.Slider('pRadius:', EV_MSOPT, 5, line[iline], 200, 
+                                    25,msmsopt['pRadius'].val, 0., 10., 1, 
+                                    'the probe radius')
+    msmsopt['density']=Draw.Slider('density:', EV_MSOPT, 5, line[iline+1], 
+                                    200, 25,msmsopt['density'].val, 0., 10., 1, 
+                                    'the vertex density for triangulation')
+    msmsopt['hdensity']=Draw.Slider('hdensity:', EV_MSOPT, 5, line[iline+2], 
+                                    200, 25,msmsopt['hdensity'].val, 0., 10., 1, 
+                                    'the vertex density for triangulation of high density surface')
+    BGL.glRasterPos2i(5,line[iline+3])
+    Draw.Text("DisplayMSMS options:")
+    return iline+4
+ 
+def drawCMSoption(iline):
+    minV=0.
+    maxV=10.
+    cmsopt['iso']=Draw.Slider('iso:', EV_CMSOPT, 5, line[iline], 200, 25,
+                                cmsopt['iso'].val, 0., 20., 0, 'isovalue')
+    cmsopt["res"]=Draw.Slider('res:', EV_CMSOPT, 5, line[iline+1], 200, 
+                                25,cmsopt['res'].val, -5.0, +5.0, 0, 
+                                'resolution')
+    BGL.glRasterPos2i(5,line[iline+2])
+    Draw.Text("displayCoarseMolecularSurface options:")
+    return iline+3
+
+def resetDashBoard():
+    LVDW.val = False
+    LBSTICK.val = False
+    LSS.val = False
+    LSURF.val = False
+    LCMS.val = False
+    stringSelection.val = ""
+    
+def update(mname,mol):  
+    LVDW.val = self.molDispl[mname][0]
+    LBSTICK.val = self.molDispl[mname][1]
+    LSS.val = self.molDispl[mname][2]
+    LSURF.val = self.molDispl[mname][3]
+    LCMS.val = self.molDispl[mname][4]
+    if self.molDispl[mname][5] != None : 
+        ColorPreset1.val = self.molDispl[mname][5]
+    if self.molDispl[mname][6] != None :
+        color=self.molDispl[mname][6]
+        ColorMol=Draw.Create(color[0],color[1],color[2])
+    if mname not in self.Mols.name:
+        print mname+" is a selection"
+        #dis=selection[1]
+        operateSelection(mname,self.selections[mol.name][mname],mol)
+        #should also modified the sel fields
+        stringSelection.val = self.selections[mol.name][mname][0]
+    else :
+        operateSelection(mname,[mname,self.molDispl[mname]],mol)
+    #print self.molDispl[mname]
+    #should look at data only for mol, not data, or should point to the same data as the mol
+    listData=self.iMolData[mname]
+    if len(listData) == 0 : dataMenu.val = 0
+    else : #take the first one ?
+        iMol = self.Mols.name.index(mname)
+        dataMenu.val = iMol+1
+    
+    #need to update the data player
+    
+        #   self.set(self.selection,self.mv.MolSelection[mname.split("_")[0]][mname])
+        #   if True in self.mv.molDispl[mname]: self.doDisplaySelection(self.mv.molDispl[mname],private)
+        #else : 
+        #   self.set(self.selection,"")
+        #if True in self.molDispl[mname]: self.doDisplaySelection(self.molDispl[mname],private)
+
+def doModeller(res):
+    dic = res[1]
+    doMD = dic.BTN['md']['value'].val
+    doMini = dic.BTN['mini']['value'].val
+    import modeller
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)    
+    mdl = mol.mdl
+    print mname
+    # Select all atoms:
+    atmsel = modeller.selection(mdl)
+    # Generate the restraints:
+    mdl.restraints.make(atmsel, restraint_type='stereo', spline_on_site=False)
+    #mdl.restraints.write(file=mpath+mname+'.rsr')
+    mpdf = atmsel.energy()
+    mol.pmvaction.last = 10000
+    mol.pmvaction.store = dic.BTN['store']['value'].val
+    print "before optmimise"
+    if doMini:
+        cg = modeller.optimizers.conjugate_gradients(output='REPORT')
+        maxit = int(dic.NUMBERS['miniIterMax']['value'].val)
+        cg.optimize(atmsel, max_iterations=maxit, actions=mol.pmvaction)#actions.trace(5, trcfil))
+        del cg
+    if doMD:
+        md = modeller.optimizers.molecular_dynamics(output='REPORT')
+        maxit = int(dic.NUMBERS['mdIterMax']['value'].val)
+        temp = dic.NUMBERS['mdTemp']['value'].val
+        md.optimize(atmsel, temperature=temp, max_iterations=int(maxit),actions=mol.pmvaction)
+        del md
+
+def drawModeller():
+    guimodeller = ParameterModeller()
+    retval = Blender.Draw.PupBlock("Modeller", guimodeller.block)
+    return retval,guimodeller
+
+
+def drawOptionMenu(choice):
+    option=listOptionsMenu[choice-1]
+    if option == 'update':
+        #try to update ePMV
+        inst=Installer(gui=False)
+        inst.mgltoolsDir=MGL_ROOT        
+        inst.getDirFromFile()
+        inst.updateCVS()
+        inst.installBlender()
+    elif option == 'loadPDB':
+        pass
+    elif option == 'loadDATA':
+        pass
+        
+def drawExtension(choice):
+    print choice
+    print listExtension[choice-1]
+    extension = listExtension[choice-1]
+    if extension == "modeller":
+        res=drawModeller()
+        doModeller(res)
+
+def setPreferences(res):
+    r=res[0]
+    prefs=res[1]
+    epmv.doCamera = prefs['Camera'].val
+    epmv.doLight = prefs['Light'].val
+    epmv.doCloud = prefs['CloudsPoints'].val
+    epmv.bicyl = prefs['BiCylinders'].val
+
+def drawPreferences():
+    preferences={"Camera":Blender.Draw.Create(0),
+                 "Light":Blender.Draw.Create(0),
+                 "CloudsPoints":Blender.Draw.Create(0),
+                 "BiCylinders":Blender.Draw.Create(0)
+                 }
+    options=[]
+    for n in preferences.keys():
+        options.append((n,preferences[n]))
+    retval = Blender.Draw.PupBlock("ePMV preferences", options)
+    return retval,preferences
+
+def drawHeadLogo(line):
+    #should be the first or last line ??
+    Draw.Image(Banner, 0, 0)#, zoomx=1.0, zoomy=1.0, clipx=0, clipy=0, clipw=-1, cliph=-1)
+
+def drawMenu(nline):
+    #fileMenu: Load PDB, Load Data, Update ePMV
+    Draw.PushButton("ePMV", EV_BT_MENU, 5, line[nline], 100, 25, "ePMV menu")
+    Draw.PushButton("extension", EV_BT_EXT, 120, line[nline], 100, 25, "extensions available")
+    Draw.PushButton("options", EV_BT_OPT, 230, line[nline], 100, 25, "preferences")
+        
+def drawAdvanceOptions(iline):
+    listobj=sc.objects.selected
+    #print listobj
+    drawCpk=False
+    drawMSM=False
+    drawBs=False
+    drawCms=False
+    for o in sc.objects.selected : 
+        if VERBOSE :print o.name,o.type
+        if o.name.find('cpk') !=-1 or o.name.split("_")[0] == 'S': drawCpk=True#
+        if o.name.find('ball') !=-1 or o.name.split("_")[0] == 'B' or o.name.split("_")[0] == 'T': drawBs=True#
+        if o.name.find('MSMS') !=-1 : drawMSM=True#
+        if o.name.find('CoarseMS') !=-1 : drawCms=True#
+    if drawCpk : iline=drawCPKoption(iline)
+    if drawBs  : iline=drawBSoption(iline)
+    if drawMSM : iline=drawMSMSoption(iline)
+    if drawCms : iline=drawCMSoption(iline)  
+    BGL.glBegin(BGL.GL_LINES);
+    BGL.glVertex3f(5., float(line[iline]), 0.0)
+    BGL.glVertex3f(395., float(line[iline]), 0.0)
+    BGL.glEnd( );
+    return iline+1
+
+def drawDataPlayer(lmol,iline):
+    global slider_min, slider_max,dataMenu,data_slider,typedata
+    global data_start,data_end,data_step
+    #per molecule
+    #menu of availabe data
+    #checkNumberOfLine(iline,k)
+    lineP=line[iline]
+    menu="DATA : %t|None %x0"
+    doit=False
+    for i,mol in enumerate(lmol) :
+        if VERBOSE :print "drawDataPlayer ", mol.name,self.iMolData
+        listData=self.iMolData[mol.name]
+        for  j,data in enumerate(listData) :
+            menu+="|"+data+" %x"+str(i+j+1)
+            doit=True
+    if doit  :
+        if typedata == "frame :" :
+            Draw.PushButton("toKeys", ev_2key, 5, lineP, 40, 25, 
+                            "bake to KeysFrame")
+            data_start = Draw.Number("start:", 1000, 50, lineP, 50, 25, 
+                                     data_start.val, slider_min, slider_max) 
+            data_end = Draw.Number("end:", 1000, 105, lineP, 50, 25, 
+                                   data_end.val, slider_min, slider_max)
+            data_step = Draw.Number("step:", 1000, 160, lineP, 50, 25, 
+                                    data_step.val, 1, 200)
+                                    #tooltip=None, callback=None, clickstep=None, precision=None)
+            iline = iline + 1 
+            lineP = line[iline]
+        dataMenu = Draw.Menu(menu,ev_data, 5, lineP, 80, 25, 
+                                 dataMenu.val,'Data')
+        data_slider = Draw.Slider(typedata, ev_slider, 85, lineP, 200, 25, 
+                                      data_slider.val, slider_min, slider_max, 
+                                      0, typedata)
+        return iline + 1
+    else :
+        return iline
+
+def drawDash(lmol,indl):
+    global ev_del,ev_vdw,ev_surf,ev_bs,ev_ss,ev_col,ev_sel,ColorPreset1,ColorMol
+    global LVDW,LBSTICK,LSS,LSURF,LCMS,LMETA,LSPLINE,LRIB
+    global stringSelection,molPreset,molMenu
+    
+    #the dash is now a menu selection for mol
+    #the dash consist of Atom | Backbone | surface representation
+    #from bottom to top line
+    ##end with color
+    #BGL.glRasterPos2i(5,line[indl])
+    #Draw.Text("Color By")
+    color = "Color by %t|Atom %x1|DG %x2|NtoC %x3|Residues %x4|ResShapely %x5|SS %x6|Color %x7"
+    ColorPreset1=Draw.Menu(color,ev_col, 5, line[indl], 100, 25, ColorPreset1.val,'Color')
+    ColorMol=Draw.ColorPicker(ev_pcol, 120, line[indl], 30, 25, ColorMol.val)
+    indl=indl+1
+    #next line : bs ratio , metaballs, cmsres
+    bsopt["ratio"]=Draw.Slider('', EV_BSOPT, 5, line[indl], 100, 
+                                25,bsopt['ratio'].val, 0., 10., 0, 
+                                'the ratio ball size/stick size')
+    LMETA=Draw.Toggle("MetaB", ev_meta, 120, line[indl], 100, 25,LMETA.val, 
+                      "display MetaBalls")
+    cmsopt["res"]=Draw.Slider('', EV_CMSOPT, 230, line[indl], 100, 
+                                25,cmsopt['res'].val, -5.0, +5.0, 0, 
+                                'resolution')
+    indl=indl+1
+    #next line : bs sc , spline, cmsiso
+    bsopt["bScale"]=Draw.Slider('', EV_BSOPT, 5, line[indl], 100, 
+                                25,bsopt['bScale'].val, 0., 10., 0, 
+                                'the scale')
+    LSPLINE=Draw.Toggle("Spline", ev_spline, 120, line[indl], 100, 25,LSPLINE.val, 
+                      "display Spline")
+    cmsopt["iso"]=Draw.Slider('', EV_CMSOPT, 230, line[indl], 100, 
+                                25,cmsopt['iso'].val, 0., 20.0, 0, 
+                                'isovalue')
+    
+    indl=indl+1
+    #next line : bs , armature, cms
+    LBSTICK=Draw.Toggle("S&B", ev_bs, 5, line[indl], 100, 25,LBSTICK.val, 
+                        "display Ball and Stick")        
+    Draw.Toggle("Armature", EV_TG_ARMATURE, 120, line[indl], 100, 25,ARMATURE, 
+                        "create an Armature")
+    LCMS=Draw.Toggle("CMS", ev_cms,230, line[indl], 100, 25,LCMS.val, 
+                     "display Coarse Molecular Surface")      
+
+    indl=indl+1
+    #next line : cpkslider, loft, msmsslider
+    cpkopt['scaleFactor']=Draw.Slider('', EV_CPKOPT, 5, line[indl], 
+                                    100, 25,cpkopt['scaleFactor'].val, 0, 10, 
+                                    0, 'the radii of the sphere is cpkRadii+vdwRadii*scale')
+    LRIB=Draw.Toggle("Loft", EV_TG_BKBONE, 120, line[indl], 100, 25,LRIB.val, 
+                        "create a Loft")
+    msmsopt['pRadius']=Draw.Slider('', EV_MSOPT, 230, line[indl], 100, 
+                                    25,msmsopt['pRadius'].val, 0., 10., 1, 
+                                    'the probe radius')
+                                    
+    indl=indl+1
+    #next line : cpk, ss,msms
+    LVDW=Draw.Toggle("CPK", ev_vdw, 5, line[indl], 100, 25,LVDW.val, 
+                     "display CPK")
+    LSS=Draw.Toggle("Rib.", ev_ss, 120, line[indl], 100, 25,LSS.val, 
+                    "display Secondary Structure")
+    LSURF=Draw.Toggle("MS", ev_surf, 230, line[indl], 100, 25,LSURF.val, 
+                      "display Molecular Surface") 
+                                    
+    indl=indl+1
+    #the molecule and selection menu
+    mol = "Molecules %t"
+    i = 1
+    for m in lmol :
+        mol += "|"+m.name+"%x"+str(i)
+        molMenu[i-1] = m.name
+        i = i +1
+        #check if the mol have selection
+        if len(self.selections[m.name]) :
+            for selname in self.selections[m.name]:
+                mol += "|"+selname+"%x"+str(i)
+                molMenu[i-1] = selname
+                i = i +1
+        
+    molPreset=Draw.Menu(mol,ev_mol, 5, line[indl], 75, 25, molPreset.val,'Molecules')
+    #the fields for selection
+    stringSelection = Draw.String("Sel:", EV_ST_SELECTION, 80, line[indl], 140, 25,
+                                  stringSelection.val, 50, "Selection string")
+    Draw.PushButton("Save", ev_sel, 230, line[indl], 40, 25, "Save the current selection")
+    #delete on/off
+    Draw.PushButton("Del", ev_del, 290, line[indl], 40, 25,"Delete the molecule")
+    indl = indl + 1
+    return indl
+    
+def draw_gui():
+    global stringName,dataName, Shapepreset, Menupreset,ExportPreset,ColorPreset1
+    global pmvcmds
+    global ColorPreset2,sliderEdge, numberCentreX, numberCentreY, numberCentreZ
+    global sliderG, sliderR, sliderB,selColorPreset,line
+    
+    nLine=0
+    
+    drawHeadLogo(nLine)
+    nLine+=1
+    #put here the file menu and the extension
+    drawMenu(nLine)
+    nLine+=1
+    
+    dataName = Draw.String("data:", EV_ST_DATA, 5, line[nLine], 235, 25,dataName.val, 100,"Name of the data file")
+    Draw.PushButton("choose", EV_BT_DCHOOSE, 240, line[nLine], 60, 25, "choose a data file")
+    Draw.PushButton("Load", EV_BT_DLOAD, 335, line[nLine], 60, 25, "Load the file")
+    nLine+=1
+    
+    stringName = Draw.String("pdb:", EV_ST_PDBNAME, 5, line[nLine], 235, 25,stringName.val, 100,"Name of the pdb file")
+    Draw.PushButton("choose", EV_BT_CHOOSE, 240, line[nLine], 60, 25, "choose a molecule file")
+    Draw.PushButton("Load", EV_BT_LOAD, 335, line[nLine], 60, 25, "Load the file")
+    nLine+=1
+    
+    BGL.glBegin(BGL.GL_LINES);
+    BGL.glVertex3f(5., float(line[nLine]), 0.0)
+    BGL.glVertex3f(395., float(line[nLine]), 0.0)
+    BGL.glEnd( );
+    
+    #execute pytyhon script button
+    Draw.PushButton("execute script", EV_BT_EXECUTE, 5, line[nLine], 235, 25, "execute python script")
+    nLine+=1
+    
+    BGL.glBegin(BGL.GL_LINES);
+    BGL.glVertex3f(5., float(line[nLine]), 0.0)
+    BGL.glVertex3f(395., float(line[nLine]), 0.0)
+    BGL.glEnd( );
+    nLine+=1
+    
+    #if DASH or len(self.Mols):
+    listmol=self.Mols
+    #dataplayer
+    nLine=drawDataPlayer(listmol,nLine)
+    drawDash(listmol,nLine)
+
+def event(event, val) :
+    if event == Draw.ESCKEY or event == Draw.QKEY:
+       stop = Draw.PupMenu("OK?%t|Stop the script %x1")
+       if stop == 1:
+              Draw.Exit()
+
+
+def loadPDB():
+    #todo, some part may probably be in the adaptor or helper instead of here
+    if VERBOSE :print stringName.val
+    if len(stringName.val) == 4 : #PDB CODE -> webdownload!
+            molname=stringName.val
+            if molname in self.Mols.name : 
+                self.hostApp.driver.duplicatemol=True
+            if VERBOSE :print self.hostApp.driver.duplicatemol
+            #how support modeller here
+            self.readFromWeb(stringName.val.upper(), log=1)
+    else :    
+        molname=os.path.splitext(os.path.basename(stringName.val))[0]
+        if VERBOSE :print molname, self.Mols.name, (molname in self.Mols.name)
+        if molname in self.Mols.name : 
+            self.hostApp.driver.duplicatemol=True
+            if VERBOSE :print self.hostApp.driver.duplicatemol
+        name=stringName.val
+        if _useModeller :
+            import modeller
+            mdl = modeller.scripts.complete_pdb(env, name)
+            mdl.patch_ss()
+            name = name.split(".pdb")[0]+"m.pdb"
+            mdl.write(file=name)
+        self.readMolecule(name,log=1)
+        if _useModeller :
+            self.Mols[-1].mdl=mdl
+            molname = self.Mols[-1].name
+        molname=molname.replace(".","_")
+        if VERBOSE :print "1",molname, self.Mols[-1].name
+        self.Mols[-1].name=molname
+        if VERBOSE :print "2", self.Mols.name
+        #molname.replace(".","_")
+        if molname in self.Mols.name : self.hostApp.driver.duplicatemol=False
+    self.selections[self.Mols[-1].name]={}
+    stringName.val=self.Mols[-1].name
+    self.iMolData[self.Mols[-1].name]=[]
+    if len(self.Mols[-1].allAtoms[0]._coords) > 1 :
+        #need a test about trajectories...
+        doit=True           
+        if len(self.iMolData[self.Mols[-1].name]) != 0 or _useModeller : #ok data
+            for dataname in self.iMolData[self.Mols[-1].name] : 
+                if dataname.find('xtc') != -1 : 
+                    doit= False
+            if doit : modelData(self.Mols[-1])
+    if VERBOSE :print "self.iMolData ",self.iMolData
+    if molname not in self.molDispl.keys() :
+        self.molDispl[self.Mols[-1].name]=[False,False,False,False,False,None,None]
+    if molname not in self.MolSelection.keys() :
+        self.MolSelection[molname]={}
+    if molname not in self.selections.keys() :       
+        self.selections[molname]={}
+    if molname not in self.iMolData.keys() :       
+        self.iMolData[molname]=[]
+    DASH=1
+ 
+
+def choosePDB(filename):
+    global stringName
+    stringName.val = filename
+    loadPDB()
+
+def loadData():
+    if VERBOSE :print dataName.val
+    dataname = dataName.val
+    extension = os.path.splitext(os.path.basename(dataname))[1] #.xtc,.trj
+    if VERBOSE :print dataname,extension
+    if extension == '.xtc' : gromacsTraj(dataname)
+    #elif extension == '.map' : gridData_1(dataname)
+    else : gridData_2(dataname)    
+
+def chooseDATA(filename):
+    global dataName
+    dataName.val = filename
+    loadData()
+    #print stringName.val
+
+def convertFrame(frame,maxi):
+       newframe= 3. - ((frame/maxi)*3.)
+       return newframe * -1.0
+
+def applyDataState(mol,value=None,redraw=True) :
+    index=dataMenu.val
+    if index == 0 : #first level == None
+        return
+    data=self.iMolData[mol.name][index-1]
+    #assume data  = string
+    extension = os.path.splitext(data)[1] #.xtc,.trj
+    if value == None : value=data_slider.val
+    #if LSS.val == 1: 
+    #         if VERBOSE :print "cleanSS"
+    #         cleanSS(sc,mol)
+    #         self.computeSecondaryStructure.clean(mol)
+    if extension == '.xtc':
+        if value >= slider_max : value =  slider_max - 1
+        self.Trajectories[data].player.applyState(int(value))
+        updateCloud(mol)
+        if self.molDispl[mol.name][3] : updateSurf()
+        if self.molDispl[mol.name][4] : updateCoarseMS()
+    elif (re.search(strDataSupported,extension,re.I)):
+         if VERBOSE :print "value",value
+         #value=convertFrame(value,1000)
+         #print value
+         #self.setIsovalue(data,value, log = 1)
+         self.isoC(self.grids3D[data],name=mol.name+"IsoSurface",
+                 isovalue=float(value))
+    else :
+        mname = data.split("_")[0]
+        mol = self.getMolFromName(mname) 
+        #nmodels=len(mol.allAtoms[0]._coords)
+        conf = int(value)
+        mol.allAtoms.setConformation(conf)
+        event = EditAtomsEvent('coords', mol.allAtoms)
+        self.dispatchEvent(event) 
+        updateCloud(mol)
+        if self.molDispl[mol.name][3] : updateSurf()
+        if self.molDispl[mol.name][4] : updateCoarseMS()
+    #if LSS.val : 
+    #    self.displayExtrudedSS(mol, negate=(not bool(LSS.val)), redraw=1 ,
+    #                           only=False, log=1)
+    #    self.colorBySecondaryStructure(mol, ['secondarystructure'], log=1)
+    if redraw :
+        sc.update()
+        Draw.Redraw()
+        Blender.Redraw()
+
+def updateData(mol) :
+    global slider_min, slider_max,typedata,data_slider
+    #data player default option
+    index=dataMenu.val
+    print index
+    if index == 0 : #first level == None
+        return
+    data=self.iMolData[mol.name][index-1]
+    extension = os.path.splitext(data)[1] #.xtc,.trj
+    if extension == '.xtc':
+        data_slider = Draw.Create(0)
+        slider_min = 0 
+        slider_max = len(self.Trajectories[data].coords)
+        typedata = "frame :"
+    elif (re.search(strDataSupported,extension,re.I)):
+        data_slider = Draw.Create(self.grids3D[data].mean)
+        slider_min = self.grids3D[data].mini#-3.0#0 
+        slider_max = self.grids3D[data].maxi#1000
+        typedata = "isovalue :"
+    else  :#pdb model or dlg model
+        data_slider = Draw.Create(0)
+        mol = self.getMolFromName(mol.name) 
+        nmodels=len(mol.allAtoms[0]._coords)
+        slider_min = 0 
+        slider_max = nmodels
+        typedata = "model :"
+
+def dataToKeyFrame(mol,start=0,end=100,step=1):
+    global slider_min, slider_max,typedata,data_slider
+    #data player default option
+    index=dataMenu.val
+    if index == 0 : #first level == None
+        return   
+    data=self.iMolData[mol.name][index-1]
+    extension = os.path.splitext(data)[1] #.xtc,.trj
+    if extension != '.xtc': 
+        print "only for trajectories "
+        return 
+    lGeom=getGeomActive(mol.name)
+    geoms = []
+    for gname in lGeom:
+        geoms.append(mol.geomContainer.geoms[gname])   
+    epmv.use_progressBar = False
+    i = start
+    while i < end :
+        applyDataState(mol,value=i,redraw=False)
+        blenderHelper.insertKeys(geoms,step=2)
+        Blender.Window.DrawProgressBar(i/float(end), 'back Traj')
+        i = i + step
+    epmv.use_progressBar = True
+    
+def modelData(mol):
+    self.iMolData[mol.name].append(mol.name+"_model")
+    data_slider = Draw.Create(0)
+    dataMenu = Draw.Create(1)
+    updateData(mol)
+       
+def gromacsTraj(filename):
+    self.openTrajectory(filename, log=0)
+    trajname=os.path.basename(filename)
+    if VERBOSE :print filename,trajname,stringName.val
+    string=stringName.val
+    mol=self.getMolFromName(str(stringName.val).split(":")[0])
+    #create the player
+    self.playTrajectory(mol.name, trajname, log=0)
+    #create the slider variable
+    data_slider = Draw.Create(0.0)
+    dataMenu = Draw.Create(1)
+    self.iMolData[mol.name].append(trajname)
+    updateData(mol)
+
+def gridData_1(filename):
+    self.browseCommands('gridCommands', commands=None, log=0, package='Pmv')
+    self.readAUTOGRID(filename, log=0)
+    self.getIsosurface(filename, log = 1)
+    dataname=filename#os.path.basename(filename)
+    if VERBOSE :print dataname
+    #string=stringName.val
+    mol=self.getMolFromName(str(stringName.val).split(":")[0])
+    #create the slider variable
+    data_slider = Draw.Create(0)
+    dataMenu = Draw.Create(1)
+    self.iMolData[mol.name].append(dataname)
+    updateData(mol)
+
+def gridData_2(filename):
+    """read any type of grid Data from filename
+    the isoSurface mesh can be associated to the current molecule
+    or not, in that case parent = None
+    """
+    self.readAny(filename)
+    name = self.grids3D.keys()[-1] #the last grid added
+    grid = self.grids3D[name]#the grid
+    #get the isoContour
+    mname,mol = getMolName()
+    print mname
+    self.cmol = mol  		   		   
+    self.isoC.select(grid_name=name)
+    self.isoC(grid,name=mname+"IsoSurface",
+                 isovalue=self.grids3D[name].mean)  
+    dataname=name
+    if VERBOSE :print dataname
+    #string=stringName.val
+    #create the slider variable
+    data_slider = Draw.Create(0)
+    dataMenu = Draw.Create(1)
+    self.iMolData[mname].append(dataname)
+    updateData(mol)
+
+def dsLines():
+    pass
+    
+def dsCPK():
+    mname,mol = getMolName()
+    #self.hostApp.driver.SetJoins(JOIN1)
+    Sel = parseSelection(stringSelection.val,mol)
+    #Sel=getSelectionLevel(mol)
+    #print Sel
+    self.displayCPK(Sel,log=LOG,negate=(not bool(LVDW.val)),redraw =0 )
+    #funcColor[ColorPreset2.val-1](molname, [name], log=1)
+    if Sel == mname :
+        self.molDispl[mname][0]= LVDW.val
+    else :
+        self.molDispl[mname][0] = False
+    Blender.Draw.Redraw()
+
+def updateCPK():
+    for i,molname in enumerate(self.Mols.name):
+        geoms=getGeomActive(molname)
+        if VERBOSE :print geoms
+        if 'cpk' in geoms : 
+            self.displayCPK(molname, log=LOG, 
+                            cpkRad=cpkopt['cpkRad'].val, 
+                            scaleFactor=cpkopt['scaleFactor'].val, 
+                            only=False, negate=False, quality=0,
+                            redraw =1)
+
+def dsBS():
+    mname,mol = getMolName() 
+    #self.hostApp.driver.SetJoins(JOIN2)
+    Sel = parseSelection(stringSelection.val,mol)
+    self.displaySticksAndBalls(Sel, log=1, cquality=0, 
+                               sticksBallsLicorice='Sticks and Balls', 
+                               bquality=0, cradius=0.2, only=False, 
+                               bRad=0.3, negate=(not bool(LBSTICK.val)), 
+                               bScale=0.0,redraw=0)
+#    if (bool(LBSTICK.val)) : 
+#        Sel=getSelectionLevel(mol)
+#        if ColorPreset1.val == 7 : 
+#            funcColor[ColorPreset1.val-1](Sel,[ColorMol.val], 
+#                                            ['balls','sticks'], log=1)
+#        elif ColorPreset1.val == 3 :
+#            self.colorByProperty.level='Atom'
+#            selection = self.select(Sel,negate=False, only=True, xor=False, 
+#                                       log=0, intersect=False)
+#            if not isinstance(selection,Atom) : 
+#                selection = selection.findType(Atom)
+#            max = len(selection)         
+#            funcColor[ColorPreset1.val-1](selection, ['balls','sticks'], 
+#                                        'number',mini=1.0,
+#                                        maxi=float(max), propertyLevel='Atom', 
+#                                        colormap='rgb256',log=1)
+#        else : 
+#            funcColor[ColorPreset1.val-1](Sel, ['balls','sticks'], log=1)
+    if Sel == mname :
+        self.molDispl[mname][1]= LBSTICK.val
+    else :
+        self.molDispl[mname][1] = False               
+
+def updateBS():
+    for i,molname in enumerate(self.Mols.name):
+        geoms=getGeomActive(molname)
+        if VERBOSE :print geoms
+        if 'balls' in geoms or 'sticks' in geoms:
+            ratio =  bsopt["ratio"].val #ball/stick
+            scale =  bsopt["bScale"].val #ball/stick
+            bRad = 0.3
+            cradius = float(bRad/ratio)*scale
+            #print bRad,cradius
+            self.displaySticksAndBalls(molname, log=LOG, bRad=0.3*scale, 
+                                       cradius =cradius, bScale=0., 
+                                       only=False, negate=False, bquality=0, 
+                                       cquality=0,redraw = 1)
+            #print "ok"
+            #need to restore the color , don't know why yet
+#            Sel=getSelectionLevel(self.Mols[i])
+#            if ColorPreset1.val == 7 : 
+#                funcColor[ColorPreset1.val-1](Sel,[ColorMol[molname].val], 
+#                                                ['balls','sticks'], log=1)
+#            elif ColorPreset1.val == 3 :
+#                self.colorByProperty.level='Atom'
+#                selection = self.select(Sel,negate=False, only=True, xor=False, 
+#                                           log=0, intersect=False)
+#                if not isinstance(selection,Atom) : 
+#                    selection = selection.findType(Atom)
+#                max = len(selection)         
+#                funcColor[ColorPreset1.val-1](selection, ['balls','sticks'], 
+#                                            'number',mini=1.0,
+#                                            maxi=float(max), propertyLevel='Atom', 
+#                                            colormap='rgb256',log=1)
+#            else : 
+#                funcColor[ColorPreset1.val-1](Sel, ['balls','sticks'], log=1)
+
+def dsSS():
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)
+    self.displayExtrudedSS(Sel, negate=(not bool(LSS.val)), only=False, log=1)
+    if Sel == mname :
+        self.molDispl[mname][2]= LSS.val
+    else :
+        self.molDispl[mname][2] = False               
+    
+def dsCMS():
+    mname,mol = getMolName()
+    name='CoarseMS_'+mname
+    Sel = parseSelection(stringSelection.val,mol)
+    parent=mol.geomContainer.masterGeom.obj 
+    if name not in mol.geomContainer.geoms :
+        geom=epmv.coarseMolSurface(mol,[32,32,32],
+                                    isovalue=7.1,resolution=-0.3,
+                                    name=name)
+        mol.geomContainer.geoms[name]=geom
+        obj=blenderHelper.createsNmesh(name,geom.getVertices(),None,
+                                      geom.getFaces(),smooth=True)
+        blenderHelper.addObjToGeom(obj,geom)
+        blenderHelper.addObjectToScene(blenderHelper.getCurrentScene(),
+                                      obj[0],parent=parent)
+        self.colorByAtomType(mname, [name], log=0)
+        obj=obj[0]
+    else :
+        obj = mol.geomContainer.geoms[name].obj
+    blenderHelper.toggleDisplay(obj,LCMS.val)
+    if Sel == mname :
+        self.molDispl[mname][4]= LCMS.val
+    else :
+        self.molDispl[mname][4] = False       
+
+def dsMSMS():
+    mname,mol = getMolName()
+    name='MSMS-MOL'+mname
+    Sel = parseSelection(stringSelection.val,mol)
+    if name in mol.geomContainer.geoms :
+        #print name
+        self.displayMSMS(Sel, negate=(not bool(LSURF.val)), 
+                        only=False, log=1, surfName=name, nbVert=1)
+    else :
+        self.computeMSMS(Sel, log=1, display=(bool(LSURF.val)), 
+                         surfName=name,perMol=1)
+    #funcColor[ColorPreset2.val-1](molname, [name], log=1)
+    if Sel == mname :
+        self.molDispl[mname][3]= LSURF.val
+    else :
+        self.molDispl[mname][3] = False       
+    Draw.Redraw()
+
+def dsRibon():
+    global BKBONE
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)
+    name="ribbon"+mol.name
+    ruban = blenderHelper.getObject(name)
+    if ruban is None :
+        atoms = mol.allAtoms.get("CA")
+        atoms.sort()
+        ruban = epmv._makeRibbon("ribbon"+mol.name,atoms.coords,
+                                 parent=mol.geomContainer.masterGeom.obj)
+    if LRIB.val :
+        blenderHelper.toggleDisplay(ruban,display=True)
+    else :
+        blenderHelper.toggleDisplay(ruban,display=False)
+        
+def dsSpline():
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)
+    name='spline'+mol.name
+    obSpline=blenderHelper.getObject(name)
+    if obSpline is None:
+        atoms = mol.allAtoms.get("CA")
+        atoms.sort()
+        obSpline,spline=blenderHelper.spline(name,atoms.coords,scene=sc,
+                                         parent=mol.geomContainer.masterGeom.obj)
+    if LSPLINE.val:
+        blenderHelper.toggleDisplay(obSpline,display=True)
+    else :
+        blenderHelper.toggleDisplay(obSpline,display=False)
+
+def dsMeta():
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)
+    #make the metaballs
+    name='metaballs'+mol.name
+    metaballs=blenderHelper.getObject(name)
+    if metaballs is None :
+        atoms = mol.allAtoms #or a subselection of surface atoms according sas
+        metaballsModifyer,metaballs = blenderHelper.metaballs(name,atoms,scn=sc,
+                                        root=mol.geomContainer.masterGeom.obj)
+    if LMETA.val :
+        blenderHelper.toggleDisplay(metaballs,display=True)
+    else :
+        blenderHelper.toggleDisplay(metaballs,display=False)
+    
+def dsBones():
+    global ARMATURE
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)
+    name=mname+"_Armature"
+    armObj = blenderHelper.getObject(name)
+    if armObj is None :
+        #sel=Sel.findType(Atom)
+        atoms=mol.allAtoms.get("CA")
+        atoms.sort()            
+        armObj=blenderHelper.armature(name,atoms,sc)       
+    if ARMATURE == 0 :
+        ARMATURE = 1
+        blenderHelper.toggleDisplay(armObj,display=True)
+    else  :
+        ARMATURE = 0
+        blenderHelper.toggleDisplay(armObj,display=False)
+
+def updateCloud(mol):
+    #should update cloud...and other mixed object type
+    cloudmeshname = mol.name+'_cloud'
+    blenderHelper.updateCloudObject(cloudmeshname,mol.allAtoms.coords)
+    #what about chain cloud object?
+    for ch in mol.chains :
+        cloudmeshname =  ch.full_name()+"_cloud"
+        blenderHelper.updateCloudObject(cloudmeshname,ch.residues.atoms.coords)
+
+def updateSurf():
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)
+    name='MSMS-MOL'+str(mname)
+    if bool(LSURF.val) and name in mol.geomContainer.geoms: 
+        self.computeMSMS(Sel,hdensity=msmsopt['hdensity'].val, 
+                                 hdset=None, log=1, 
+                                 density=msmsopt['density'].val, 
+                                 pRadius=msmsopt['pRadius'].val, 
+                                 perMol=1, display=True, 
+                                 surfName=name)
+                                 
+def updateCoarseMS():
+    mname,mol = getMolName()
+    Sel = parseSelection(stringSelection.val,mol)
+    name='CoarseMS_'+mname
+    parent=mol.geomContainer.masterGeom.obj
+    #geoms=getGeomActive(mol.name)
+    select=self.select(Sel,negate=False, only=True, xor=False, log=0, 
+                           intersect=False)
+    #chain=select.findParentsOfType(Chain)[0]
+    #parent=mol.geomContainer.masterGeom.chains_obj[chain.name]
+    #select=self.mv.select(sel,negate=False, only=True, xor=False, log=0, intersect=False)
+    if bool(LCMS.val) and name in mol.geomContainer.geoms.keys():
+        #isovalue=7.1#float(cmsopt['iso'].val),
+        #resolution=-0.3#float(cmsopt['res'].val)
+        g = epmv.coarseMolSurface(select,[32,32,32],
+                                  isovalue=float(cmsopt['iso'].val),
+                                  resolution=float(cmsopt['res'].val),
+                                  name=name,
+                                  geom = mol.geomContainer.geoms[name])
+        blenderHelper.updateMesh(g,parent=parent,mol=mol)
+
+def getSelectTxt():
+    texts = list(bpy.data.texts)
+    textNames = [tex.name for tex in texts]
+    if textNames:
+        choice = Draw.PupMenu('|'.join(textNames))
+        if choice != -1:
+        	text = texts[choice-1]
+        	return text
+    return None
+
+def execPmvComds():
+    #first select the text
+    #cmds=pmvcmds.val
+    text = getSelectTxt()
+    if text is not None:
+        scmds=text.asLines()
+        cmds=""
+        for l in scmds:
+            cmds+=l+'\n'
+            print len(cmds),cmds
+        exec(cmds,{'self':self})
+    
+def button_event(evt) :
+    global SURF,VDW,BKBONE,ARMATURE,CAT,TUBE,BSTICK,SS,COLOR1,COLOR2,JOIN1
+    global JOIN2,JOIN3,DASH,LSURF,LVDW,LSS,LCMS,LMETA,LSPLINE,LBSTICK,LCOLOR,ONLY,EV_CPKRAD
+    global stringName,dataName,stringSelection,pmvcmds
+    if VERBOSE :print "button evt", evt
+    Blender.Window.WaitCursor(1)
+
+    ###########PLUGIN EVENT#######################################
+    if evt==EV_BT_OK:
+        #print "DOIT"
+        Make()
+    elif evt==EV_BT_CANCEL:
+        Draw.Exit()
+    elif evt == EV_BT_CHOOSE :
+                Blender.Window.FileSelector (choosePDB, 'loadPDB')
+    ###########PYTHON SCRIPT#######################################
+    elif evt==EV_BT_EXECUTE:
+        execPmvComds()
+    ###########MOLECULE EVENT#######################################
+    elif evt == EV_BT_LOAD :
+        loadPDB()
+    elif evt == EV_BT_DCHOOSE :
+        Blender.Window.FileSelector (chooseDATA, 'loadDATA')
+    elif evt == ev_mol :
+        mname,mol = getMolName()
+        update(mname,mol)
+    elif evt == ev_del :
+        mname,mol = getMolName()
+        if mname in self.Mols.name :
+            #need to first delete the blender geom and the associates directory
+            #note the mesh are still in the memory ....
+            delMolDic(mname)
+            delGeomMol(mol)
+            #then delete the mol
+            self.deleteMol(mol, log=0)
+        else : # it is a selection, just remove the dictionary entry
+            #need to delete the geom
+            del self.selections[name][mname]
+            del self.molDispl[mname]
+    ###########DISPLAY EVENT#######################################
+    elif evt == ev_vdw :
+        dsCPK()
+    elif evt == EV_CPKOPT : 
+        updateCPK()
+    elif evt == ev_surf :
+        dsMSMS()
+    elif evt == EV_MSOPT :
+        updateSurf()
+    elif evt == ev_cms :
+        dsCMS()
+    elif evt == EV_CMSOPT :
+        updateCoarseMS()
+    elif evt == ev_ss :
+        dsSS()
+    elif evt == ev_meta :
+        dsMeta()
+    elif evt == ev_spline :
+        dsSpline()
+    elif evt == ev_bs :
+        dsBS()
+    elif evt == EV_BSOPT : 
+        updateBS()
+    elif evt == EV_TG_ARMATURE:
+        dsBones()
+    ###########COLOR EVENT#######################################
+    elif evt == ev_col :
+        mname,mol = getMolName() 
+        #print ind,name
+        LCOLOR = 1 - LCOLOR
+        #self.displayExtrudedSS(self.Mols[ind].name, negate=(not bool(LSS[name]q)), only=False, log=1)
+        #listofGeom to color : all activated
+        Sel = parseSelection(stringSelection.val,mol)
+        lGeom=getGeomActive(mname)
+        #print "colorF ", funcColor[ColorPreset1.val-1], Sel, lGeom
+        if ColorPreset1.val == 7 : 
+            self.molDispl[mname][6]=ColorMol.val
+            funcColor[ColorPreset1.val-1](Sel,[ColorMol.val], lGeom, log=1)
+        elif ColorPreset1.val == 3 :
+            self.colorByProperty.level='Atom'
+            selection = self.select(Sel,negate=False, only=True, xor=False, 
+                                       log=0, intersect=False)
+            if not isinstance(selection,Atom) : 
+                selection = selection.findType(Atom)
+            max = len(selection)         
+            funcColor[2](selection, lGeom, 'number',mini=1.0,
+                                        maxi=float(max), propertyLevel='Atom', 
+                                        colormap='rgb256',log=1)
+        else : 
+            funcColor[ColorPreset1.val-1](Sel, lGeom, log=1)
+        self.molDispl[mname][5] = ColorPreset1.val
+    elif evt == ev_pcol :
+        mname,mol = getMolName()
+        if  ColorPreset1.val == 7 :
+            lGeom=getGeomActive(mname)
+            funcColor[ColorPreset1.val-1](mname,[ColorMol.val], lGeom, log=1) 
+            self.molDispl[mname][6]=ColorMol.val
+    elif evt == ev_mod :
+        mname,mol = getMolName()
+        Sel = parseSelection(stringSelection.val,mol)
+        #ind=int(str(evt/baseISel[6])[0])
+        #mol=self.Mols[ind-1]
+        #mname = mol.name
+        #seli=(evt-(baseISel[6]*ind))
+        #sel=mname+'_sel_'+str(seli)
+        #self.selections[mname][sel][1]=[LVDW[sel],LBSTICK[sel],LSS[sel],LSURF[sel]] #cpk,b&s,ribbon,surf
+        #self.selections[mname][sel][2]=str(selColorPreset[sel].val-1)
+        #operateSelection(sel,self.selections[mname][sel],self.Mols[ind-1])
+        #Draw.Redraw()
+    ###########DATA EVENT#######################################
+    elif evt == EV_BT_DLOAD :
+        loadData()
+    elif evt == ev_data :
+        mname,mol = getMolName()
+        updateData(mol)
+    elif evt == ev_slider :
+        mname,mol = getMolName()
+        applyDataState(mol)
+    elif evt == ev_2key:
+        #need to get start / end / step
+        name,mol = getMolName()
+        dataToKeyFrame(mol)
+    ###########SELECTION EVENT#######################################
+    elif evt == EV_ST_SELECTION :
+        #do nothing
+        pass
+        #name,mol = getMolName()
+        #if VERBOSE :print "mol name ",name
+        #sel=stringSelection.val
+        #selname=name+"_sel_0"
+        #print sel,selname
+        #selection = []#array of parameter : selection string / display mode / color mode
+        #selection.append(sel)
+        #selection.append([LVDW,LBSTICK,LSS,LSURF]) #cpk,b&s,ribbon,surf
+        #selection.append(str(selColorPreset.val-1))
+        #selection.append(parseSelection(sel,mol))
+        #operateSelection(selname,selections[name][selname],mol)
+    elif evt == ev_sel :
+        #store the current selection
+        name,mol = getMolName()
+        if VERBOSE :print "mol name ",name
+        sel=stringSelection.val
+        n=len(self.selections[name])
+        selname=mol.name+"_sel_"+str(n)
+        name = mol.name
+        if VERBOSE :print "sel str ",sel,n,selname
+        self.selections[name][selname]=[]#array of parameter : selection string / display mode / color mode
+        self.selections[name][selname].append(sel)
+        self.selections[name][selname].append([LVDW.val,LBSTICK.val,LSS.val,LSURF.val,LCMS.val,None,None]) #cpk,b&s,ribbon,surf
+        self.selections[name][selname].append(str(selColorPreset.val-1))
+        self.selections[name][selname].append(parseSelection(sel,mol))
+        self.molDispl[selname]=[LVDW.val,LBSTICK.val,LSS.val,LSURF.val,LCMS.val,None,None]
+        if ColorPreset1.val == 7 : 
+            self.molDispl[selname][6]=ColorMol.val
+            self.selections[name][selname][1][6]=ColorMol.val
+        self.molDispl[selname][5] = ColorPreset1.val
+        self.selections[name][selname][1][5]=ColorPreset1.val
+        if VERBOSE :print self.selections[name][selname]
+        self.iMolData[selname]=self.iMolData[mol.name]
+        #operateSelection(selname,self.selections[name][selname],mol)
+        resetDashBoard()
+        Draw.Redraw()
+        Draw.Redraw(1)
+    ###########OPTIONAL EVENT#######################################
+    elif evt==EV_TG_BKBONE:
+        dsRibon()
+    elif evt==EV_TG_CAT:
+        CAT = 1 - CAT
+        BKBONE = 0
+        Draw.Redraw()
+    elif evt==EV_TG_JOIN1:
+        JOIN1 = 1 - JOIN1
+    elif evt==EV_TG_ONLY:
+        ONLY = 1 - ONLY
+    elif evt==EV_BT_MENU:
+        #draw popumenu with associated command: loadPDB,loadData,Update
+        choice = Draw.PupMenu('|'.join(listOptionsMenu))
+        drawOptionMenu(choice)
+    elif evt==EV_BT_EXT:
+        #draw popumenu with associated command
+        choice = Draw.PupMenu('|'.join(listExtension))
+        print choice
+        drawExtension(choice)
+    elif evt==EV_BT_OPT:
+        res=drawPreferences()
+        setPreferences(res)
+    sc.update()
+    Blender.Draw.Redraw()
+    Blender.Redraw()
+    Blender.Window.RedrawAll()
+    Blender.Window.DrawProgressBar(1.0, '')
+    Blender.Window.WaitCursor(0)
+    update_Registry()
+Draw.Register(draw_gui, event, button_event)

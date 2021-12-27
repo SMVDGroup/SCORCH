@@ -1,0 +1,41 @@
+
+ESSENTIAL SCORING ARGUMENTS
+	-receptor:
+Filepath for receptor pdbqt. If a single file is supplied, this    is used as the receptor for all supplied ligands. If directory is supplied, it is assumed to be a directory of directories each containing a protein.pdbqt and ligand.pdbqt file which will be scored in pairss
+
+	-ligand:
+Filepath for ligand pdbqt. If a single pdbqt file is supplied,    this is used as the ligand for the supplied receptor. If a directory is supplied alongside a single receptor file, it is assumed to be a directory of ligands to score against a single receptor. If the supplied directory is identical to the supplied receptor directory, it is assumed to be a directory of directories each containing a protein.pdbqt and ligand.pdbqt file which will be scored in pairs. If smiles are supplied in .txt or .smi format, they are docked using the protocol described in the publication. 
+
+ESSENTIAL DOCKING ARGUMENTS
+
+	-ref_lig:
+If ligands are supplied in .smi format for scoring, a reference ligand is required for docking in .pdb or .pdbqt format
+
+OPTIONAL SCORING ARGUMENTS
+        -out:
+Filepath of .csv file to save scoring results (Default MLScoring/output/Results.csv)
+
+	-pose_1:
+If supplied, only the first pose for each supplied ligand is     scored (Default all pqbdt poses are scored)
+
+	-threads:
+Number of threads to parallelise scoring over (Default 1)
+
+	-num_networks:
+Number of networks to query for neural network based models    (Default 10)
+
+	-mlpscore:
+If supplied, complexes are only scored with sequential neural network model (Default consensus of mlpscore, widedeepscore, xgbscore)
+
+	-widedeepscore:
+If supplied, complexes are only scored with wide and deep neural network model (Default consensus of mlpscore, widedeepscore, xgbscore)
+
+	-xgbscore:
+If supplied, complexes are only scored with xgboost model    (Default consensus of mlpscore, widedeepscore, xgbscore)
+
+
+PARAMETER FILES:
+
+	-utils/dock_settings.json:
+File containing filepaths for GWOVina and MGLTools 1.5.6 local installations, as well as GWOVina settings for preparing and docking ligands in SMILE format.
+

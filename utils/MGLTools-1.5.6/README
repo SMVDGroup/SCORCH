@@ -1,0 +1,163 @@
+            MGLTools version 1.5.6 - BINARY DISTRIBUTION
+=======================================================================
+Thank you for installing MGLTools version 1.5.6. 
+MGLTools is a collection of Python-based software tools developed 
+at the Molecular Graphics Lab (MGL) of the Scripps Research Institute.
+This distribution contains a pre-compiled Python interpreter (version 2.5),
+and the following stand-alone applications:
+
+PMV	-  Python Molecular Viewer
+VISION	-  Visual Programming Environment
+ADT	-  AutoDockTools
+
+***************************************************************************
+**  SETTING UP YOUR ENVIRONMENT FOR COMMAND LINE USAGE
+****************************************************************************
+  To be able to start any of these applications in a Terminal Window
+  you will need to:
+  - either add "/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/share/bin" to the path environment 
+    variable in your .cshrc or .bashrc as in the following example:
+     .cshrc  - set path = (/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin $path)
+     .bashrc - export PATH="/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin:"$PATH
+  - or create aliases in your .cshrc or .bashrc as in the next examples:
+     .cshrc:
+     alias pmv /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pmv
+     alias adt /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/adt
+     alias vision /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/vision
+     alias pythonsh /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+     .bashrc:
+     alias pmv='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pmv'
+     alias adt='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/adt'
+     alias vision='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/vision'
+     alias pythonsh='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh'
+
+Rehash your path, if needed, for these changes to be in effect:
+       c-shell:
+	    > rehash 
+       bash-shell:
+	    > hash 
+
+To use PMV, ADT or VISION type pmv, adt or vision respectively; 
+for example:
+     > pmv 
+
+A Python Molecule Viewer should come up.  You can load files from the 
+/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/Data directory and start playing with PMV.  
+Simple networks and data for VISION are located in 
+/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/MGLToolsPckgs/Vision/Examples.
+
+To run Python interpreter type "pythonsh":
+    > pythonsh                    
+                
+**************************************************************************
+**  Pmv script command line options
+**************************************************************************
+
+"pmv" script can be used with the following options:
+
+        -h or --help       : print help message
+        -a or --again      : play back lastlog file
+        --overwriteLog     : overwrite log file
+        --uniqueLog        : create a log file with a unique name
+        --noLog            : turn off logging
+        --die              : do not start GUI event loop
+        --customizer file  : run the user specified file
+        --lib packageName  : add a libraries of commands
+	-d or --dmode modes : specify a display mode
+	        modes can be any a combination of display mode
+		   'cpk'  : cpk
+		   'lines': lines
+		   'ss'   : secondary structure ribbon
+		   'sb'   : sticks and balls
+		   'ms'   : molecular surface
+		   'ca'   : C-alpha trace
+		   'bt'   : backbone trace
+		   'sp'   : CA-spline
+		   'sssb' : secondary structure for proteins,
+		            sticks and balls for other residues with bonds
+			    lines for other residues without bonds
+
+	-c or --cmode modes : specify a dispaly mode
+                color scheme:
+		    'ca' : color by atom
+		    'cr' : color by residue (RASMOL scheme)
+		    'cc' : color by chain
+		    'cm' : color by molecule
+		    'cdg': color using David Goodsell's scheme
+		    'cs' : color residues using Shapely scheme
+		    'css': color by secondary structure element
+	'-i', '--interactive' : PMV interactive shell
+
+	--opt            : run Python in optimized mode
+
+ EXAMPLE::
+     Display protein as ribbon, non protein as sticks and balls
+     and color by atom type
+	         pmv -i --dmode sssb --cmode cr myprot.pdb
+	         pmv -i -m sssb -c cr myprot.pdb 
+
+**************************************************************************
+**  CITING THESE TOOLS IN PUBLICATIONS
+**************************************************************************
+Whether you plan to use this software for Commercial or Non-commercial purposes, 
+we ask that you acknowledge using these tools in any publications arising 
+from their use. Under the PMV Help menu there is a citation command providing various
+papers to be cited for various tools included in this distribution.
+
+	PMV  Help->citations
+
+more license information is available below
+
+**************************************************************************
+**  LICENSES
+**************************************************************************
+You can refer to the license information available for the following packages:
+
+   -Python packages developed at MGL(Pmv, DejaVu, ViewerFramework, 
+    AutoDockTools, MolKit, NetworkEditor, Vision, PyBabel, mglutil): 
+        ./LICENSES or http://www.scripps.edu/~sanner/python/tsrilicense.html
+
+   -Platform dependent packages:
+      mslib - library to compute molecular surfaces:
+        ./LICENSES or http://www.scripps.edu/pub/olson-web/share/packager/msmsLicense.html
+      stride - the knowledge-based protein secondary structure assignment 
+	from atomic coordinates library:
+        ./LICENSES or http://www.scripps.edu/~sanner/python/strideLicense.html.
+
+Unless otherwise stated, packages that do not specify a license are released 
+under the MOZILLA Open Source License.
+
+**************************************************************************
+**  DOCUMENTATION
+**************************************************************************
+Documentation, tutorials and more information are
+available online:
+ http://mgltools.scripps.edu/documentation
+
+**************************************************************************
+**  HOW TO CONTACT US:
+**************************************************************************
+Several mailing lists are available for asking questions and getting answers
+You can subscribe or search the archives of these lists at:
+
+   http://mgldev.scripps.edu/mailman/listinfo
+
+The following lists are relevant to this distribution
+ 
+ -autodock: a community of AutoDock, AutoGrid and AutoDockTools (ADT) users 
+  with lots of experience to share
+  http://mgldev.scripps.edu/mailman/listinfo/autodock
+
+ -pmv for questions regarding the use of PMV;
+  http://mgldev.scripps.edu/mailman/listinfo/pmv
+
+ -vision for questions regarding the use of VISION;
+  http://mgldev.scripps.edu/mailman/listinfo/vision
+
+ -MGLTools support for questions regarding installing the MGLTools.
+  http://mgldev.scripps.edu/mailman/listinfo/mglsupport
+
+Please visit our Frequently Asked Questions page if you have any problems 
+installing or running our tools (http://mgltools.scripps.edu/documentation/faq).
+For other inquiries, send an email to mgltools:
+ mgltools@scripps.edu

@@ -1,0 +1,5 @@
+#!/localhome/mgltools/MakeInstallers/python2.5/bin/python
+
+from idlelib.PyShell import main
+if __name__ == '__main__':
+    main()
