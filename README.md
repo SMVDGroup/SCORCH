@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.6.9-blue)](https://www.python.org/downloads/release/python-369/)
-[![OS](https://img.shields.io/badge/OS-linux%20%7C%20OS%20X-blueviolet)]()
+[![OS](https://img.shields.io/badge/OS-linux%20%7C%20OS%20X-blueviolet)]
 [![Preprocessing](https://img.shields.io/badge/preprocessing-MGLTools%201.5.6-brightgreen)](https://ccsb.scripps.edu/mgltools/1-5-6/)
 [![Docking](https://img.shields.io/badge/docking-GWOVina%201.0-brightgreen)]( https://doi.org/10.1111/cbdd.13764)
 ---
