@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.6.9-blue)](https://www.python.org/downloads/release/python-369/)
-[![OS](https://img.shields.io/badge/OS-linux%20%7C%20OS%20X-blueviolet)]()
+![](https://img.shields.io/badge/OS-linux%20%7C%20OS%20X-blueviolet)
 [![Preprocessing](https://img.shields.io/badge/preprocessing-MGLTools%201.5.6-brightgreen)](https://ccsb.scripps.edu/mgltools/1-5-6/)
 [![Docking](https://img.shields.io/badge/docking-GWOVina%201.0-brightgreen)](https://doi.org/10.1111/cbdd.13764)
 
@@ -57,7 +57,7 @@ The scoring function itself is supplied as a python script `scoring.py`. Argumen
 
 ## Examples
 
-#### Scoring a Single PDBQT Ligand Against a Single PDBQT Receptor
+### Scoring a Single PDBQT Ligand Against a Single PDBQT Receptor
 
 For scoring a single ligand - `/home/user/ligands/ligand.pdbqt` - against a single receptor - `/home/user/receptors/receptor.pdbqt`:
 
@@ -97,7 +97,7 @@ python scoring.py \
 -verbose
 ```
 
-#### Scoring Multiple PDBQT Ligands Against a Single PDBQT Receptor
+### Scoring Multiple PDBQT Ligands Against a Single PDBQT Receptor
 
 For scoring all ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory filepath to the `-ligand` argument:
 
@@ -108,7 +108,7 @@ python scoring.py \
 -out scoring_results.csv
 ```
 
-#### Scoring Multiple PDBQT Ligands Against Multiple PDBQT Receptors
+### Scoring Multiple PDBQT Ligands Against Multiple PDBQT Receptors
 
 The scoring function can also take a folder of folders as an argument to score multiple ligands against multiple receptors. For example, say you have a benchmarking dataset stored in the following way in the folder `dataset`:
 
@@ -134,6 +134,6 @@ python scoring.py \
 
 **Note - the `-verbose` flag must be used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file**
 
-#### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
+### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
 
 The scoring function also includes a full pipeline to convert SMILES ligands to 3D pdbqt files using [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/), dock them using [GWOVina](https://doi.org/10.1111/cbdd.13764), and score them with MLScore.
