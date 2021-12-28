@@ -279,12 +279,15 @@ def test(params):
 def binary_concat(dfs, headers):
 
     ###########################################
-    # Function: Parse user defined command    #
-    # line arguments                          #
+    # Function: Concatenate list of           #
+    # dataframes into a single dataframe by   #
+    # sequentially writing to a single binary #
+    # file (removes pd.concat bottleneck)     #
     #                                         #
-    # Inputs: Command line arguments          #
+    # Inputs: List of dataframes, dataframe   #
+    # headers as a list                       #
     #                                         #
-    # Output: Populated params dictionary     #
+    # Output: Single combined dataframe       #
     ###########################################
 
     total_rows = 0
@@ -622,6 +625,17 @@ def prepare_models(params):
     return models
 
 def scoring(params):
+
+    ###########################################
+    # Function: Score protein-ligand          #
+    # complex(es)                             #
+    #                                         #
+    # Inputs: User command line parameters    #
+    # dictionary                              #
+    #                                         #
+    # Output: Dataframe of scoring function   #
+    # predictions                             #
+    ###########################################
 
     print_intro(params)
 
