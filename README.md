@@ -10,6 +10,8 @@
 
 MLScore is a scoring function based on a consensus of machine learning models. The contributing models were trained on multiple docked ligand poses labelled by RMSD, meaning only well docked strong binders are rewarded, and poorly docked strong binders and all weak binders are punished.
 
+![](pose_labels.gif)
+
 ---
 
 # Installation
