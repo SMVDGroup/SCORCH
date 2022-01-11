@@ -10,9 +10,9 @@
 
 MLScore is a scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. MLScore scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
 
-MLScore uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](), [Vina](), and [GWOVina]() docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
+MLScore uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](https://autodock.scripps.edu/), [Vina](https://dx.doi.org/10.1002/jcc.21334), and [GWOVina](https://cbbio.online/software/gwovina/index.html) docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
 
-MLScore uses a variety of descriptors to characterize a docked pose, including [Binana]() and [ECIFs](). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. MLScore has used over XXX poses in its training. As a result, MLScore avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
+MLScore uses a variety of descriptors to characterize a docked pose, including [Binana 1.3](https://git.durrantlab.pitt.edu/jdurrant/binana/-/tree/1.3) and [ECIFs](https://github.com/DIFACQUIM/ECIF). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. MLScore has used over 54,000 poses in its training. As a result, MLScore avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
 
 
 ![](pose_labels.gif)
