@@ -24,7 +24,6 @@ from utils import kier
 import logging
 from utils.ecifs import *
 from utils.dock_functions import *
-from rich.progress import track
 import pandas as pd
 import multiprocessing as mp
 import sys
@@ -33,10 +32,7 @@ from functools import reduce
 import pickle
 import numpy as np
 import shutil
-import time
-import glob
 import json
-from pprint import pprint
 import xgboost as xgb
 from tqdm import tqdm
 from warnings import filterwarnings
@@ -537,27 +533,23 @@ def print_intro(params):
     logging.info('\n')
     logging.info('**************************************************************************')
 
-    logging.info(f'MLScoring v1.0')
-    logging.info(f'Miles McGibbon, Samuel Money-Kyrle, Dr Vincent Blay & Dr Douglas R. Houston\n')
+    logging.info('MLScoring v1.0')
+    logging.info('Miles McGibbon, Samuel Money-Kyrle, Vincent Blay & Douglas R. Houston\n')
 
     logging.info('**************************************************************************\n')
 
     if params['dir']:
         logging.info(f'Parsed {len(params["ligand"])} protein-ligand complexes for scoring...\n')
-        bar_description = 'Scoring protein-ligand complexes...'
 
     if params['screen']:
         logging.info(f'Parsed {len(params["ligand"])} ligands for scoring against a single receptor...\n')
-        bar_description = 'Scoring ligands...'
 
     if params['single']:
-        logging.info(f'Parsed one ligand for scoring against a single receptor...\n')
-        bar_description = 'Scoring ligand...'
+        logging.info('Parsed one ligand for scoring against a single receptor...\n')
 
     if params['dock']:
         ligand_count = len(open(params["ligand"]).read().split("\n"))
         logging.info(f'Parsed {ligand_count} ligand smiles for docking and scoring against a single receptor...\n')
-        bar_description = 'Scoring ligands...'
 
         logging.info('**************************************************************************\n')
 
@@ -582,16 +574,16 @@ def prepare_models(params):
 
     if params['xgbscore_multi']:
 
-        logging.info(f'XGBoost Multi-pose Model: Yes')
+        logging.info('XGBoost Multi-pose Model: Yes')
         xgb_path = os.path.join('utils','models','xgbscore','495_models_58_booster.pkl')
         models['xgbscore_multi'] = pickle.load(open(xgb_path,'rb'))
     else:
 
-        logging.info(f'XGBoost Multi-pose Model: No')
+        logging.info('XGBoost Multi-pose Model: No')
 
     if params['mlpscore_multi']:
 
-        logging.info(f'ANN Multi-pose Model : Yes')
+        logging.info('ANN Multi-pose Model : Yes')
         logging.info(f'- Using Best {params["num_networks"]} Networks')
         models['mlpscore_multi'] = os.path.join('utils','models','mlpscore_multi')
         model_ranks = pickle.load(open(os.path.join(models['mlpscore_multi'],'rankings.pkl'),'rb'))
@@ -599,11 +591,11 @@ def prepare_models(params):
         models['mlpscore_multi'] = [os.path.join(models['mlpscore_multi'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
     else:
 
-        logging.info(f'ANN Multi-pose Model: No')
+        logging.info('ANN Multi-pose Model: No')
 
     if params['wdscore_multi']:
 
-        logging.info(f'WD Multi-pose Model : Yes')
+        logging.info('WD Multi-pose Model : Yes')
         logging.info(f'- Using Best {params["num_networks"]} Networks')
         models['wdscore_multi'] = os.path.join('utils','models','wdscore_multi')
         model_ranks = pickle.load(open(os.path.join(models['wdscore_multi'],'rankings.pkl'),'rb'))
@@ -611,7 +603,7 @@ def prepare_models(params):
         models['wdscore_multi'] = [os.path.join(models['wdscore_multi'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
     else:
 
-        logging.info(f'WD Multi-pose Model: No')
+        logging.info('WD Multi-pose Model: No')
 
     logging.info('\n')
 
