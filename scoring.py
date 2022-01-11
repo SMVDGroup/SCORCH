@@ -216,11 +216,11 @@ def run_networks(df, model_file, model_name):
         model_columns.append(f'{model_name}_{i + 1}')
         predictions[f'{model_name}_{i + 1}'] = y_pred.flatten()
 
-    predictions[f'{model_name}_best_average'] = predictions[model_columns].mean(axis=1)
+    predictions[f'{model_name}_models_average'] = predictions[model_columns].mean(axis=1)
 
     return predictions.reset_index(drop=True)
 
-def run_xgbscore(df, single):
+def run_xgboost_models(df, single):
 
     ###########################################
     # Function: Get prediction from XGB model #
@@ -233,9 +233,9 @@ def run_xgbscore(df, single):
     # Output: Float prediction                #
     ###########################################
 
-    global xgbscore
+    global xgboost_models
     dtest = xgb.DMatrix(df, feature_names=df.columns)
-    prediction = xgbscore.predict(dtest)
+    prediction = xgboost_models.predict(dtest)
     return prediction
 
 def test(params):
@@ -255,19 +255,19 @@ def test(params):
     features = extract(cmd_params)
     results = []
 
-    if params['mlpscore_multi'] == True:
+    if params['ff_nn'] == True:
         df = transform_df(features, single=True)
-        mlp_result = run_networks(params['num_networks'],df,'mlpscore_multi')
+        mlp_result = run_networks(params['num_networks'],df,'ff_nn')
         results.append(mlp_result)
 
-    if params['wdscore_multi'] == True:
+    if params['wd_nn'] == True:
         df = transform_df(features, single=True)
-        mlp_result = run_networks(params['num_networks'],df,'wdscore_multi')
+        mlp_result = run_networks(params['num_networks'],df,'wd_nn')
         results.append(mlp_result)
 
-    if params['xgbscore_multi'] == True:
+    if params['xgboost_model'] == True:
         df = transform_df(features, single=False)
-        xgb_result = run_xgbscore(df, single=False)
+        xgb_result = run_xgboost_models(df, single=False)
         results.append(xgb_result)
 
     return np.mean(results)
@@ -349,7 +349,7 @@ def parse_args(args):
         except:
             params['out'] = False
 
-        models = ['-mlpscore_multi','-wdscore_multi','-xgbscore_multi']
+        models = ['-ff_nn','-wd_nn','-xgboost_model']
         args_check = list(map(lambda v: v in args, models))
         if any(args_check):
             for model, check in zip(models,args_check):
@@ -572,44 +572,44 @@ def prepare_models(params):
 
     models = {}
 
-    if params['xgbscore_multi']:
+    if params['xgboost_model']:
 
-        logging.info('XGBoost Multi-pose Model: Yes')
-        xgb_path = os.path.join('utils','models','xgbscore','495_models_58_booster.pkl')
-        models['xgbscore_multi'] = pickle.load(open(xgb_path,'rb'))
+        logging.info('XGBoost Model: Yes')
+        xgb_path = os.path.join('utils','models','xgboost_models','495_models_58_booster.pkl')
+        models['xgboost_model'] = pickle.load(open(xgb_path,'rb'))
     else:
 
-        logging.info('XGBoost Multi-pose Model: No')
+        logging.info('XGBoost Model: No')
 
-    if params['mlpscore_multi']:
+    if params['ff_nn']:
 
-        logging.info('ANN Multi-pose Model : Yes')
+        logging.info('Feedforward NN Model : Yes')
         logging.info(f'- Using Best {params["num_networks"]} Networks')
-        models['mlpscore_multi'] = os.path.join('utils','models','mlpscore_multi')
-        model_ranks = pickle.load(open(os.path.join(models['mlpscore_multi'],'rankings.pkl'),'rb'))
+        models['ff_nn'] = os.path.join('utils','models','ff_nn_models')
+        model_ranks = pickle.load(open(os.path.join(models['ff_nn'],'rankings.pkl'),'rb'))
         model_ranks = model_ranks[:params["num_networks"]]
-        models['mlpscore_multi'] = [os.path.join(models['mlpscore_multi'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
+        models['ff_nn'] = [os.path.join(models['ff_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
     else:
 
-        logging.info('ANN Multi-pose Model: No')
+        logging.info('Feedforward NN Model : No')
 
-    if params['wdscore_multi']:
+    if params['wd_nn']:
 
-        logging.info('WD Multi-pose Model : Yes')
+        logging.info('W&D NN Model : Yes')
         logging.info(f'- Using Best {params["num_networks"]} Networks')
-        models['wdscore_multi'] = os.path.join('utils','models','wdscore_multi')
-        model_ranks = pickle.load(open(os.path.join(models['wdscore_multi'],'rankings.pkl'),'rb'))
+        models['wd_nn'] = os.path.join('utils','models','wd_nn_models')
+        model_ranks = pickle.load(open(os.path.join(models['wd_nn'],'rankings.pkl'),'rb'))
         model_ranks = model_ranks[:params["num_networks"]]
-        models['wdscore_multi'] = [os.path.join(models['wdscore_multi'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
+        models['wd_nn'] = [os.path.join(models['wd_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
     else:
 
-        logging.info('WD Multi-pose Model: No')
+        logging.info('W&D NN Model: No')
 
     logging.info('\n')
 
     if params['pose_1']:
 
-        logging.info('Calculating scores for first model only in pdbqt file(s)\n')
+        logging.info('Calculating scores for first pose only in pdbqt file(s)\n')
 
 
     logging.info('**************************************************************************\n')
@@ -735,23 +735,25 @@ def scoring(params):
 
     merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
 
-    multi_models = ['xgbscore_multi',
-                    'mlpscore_multi_best_average',
-                    'wdscore_multi_best_average']
+    multi_models = ['xgboost_model',
+                    'ff_nn_models_average',
+                    'wd_nn_models_average']
 
-    merged_results['multi_consensus'] = merged_results[multi_models].mean(axis=1)
-    merged_results['multi_consensus_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
-    merged_results['multi_consensus_range'] = merged_results[multi_models].max(axis=1) - merged_results[multi_models].min(axis=1)
+    merged_results['model_consensus'] = merged_results[multi_models].mean(axis=1)
+    max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
+    minimum_val = 1-max_std
+    maxmum_val = 1
+    merged_results['model_consensus_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
+    merged_results['model_confidence'] = ((1-merged_results['model_consensus_stdev'])-minimum_val)/max_std
 
     if params['concise']:
         merged_results = merged_results[['Receptor',
                                          'Ligand',
-                                         'xgbscore_multi',
-                                         'mlpscore_multi_best_average',
-                                         'wdscore_multi_best_average',
-                                         'multi_consensus',
-                                         'multi_consensus_stdev',
-                                         'multi_consensus_range']].copy()
+                                         'xgboost_model',
+                                         'ff_nn_models_average',
+                                         'wd_nn_models_average',
+                                         'model_consensus',
+                                         'model_confidence']].copy()
 
     return merged_results
 
