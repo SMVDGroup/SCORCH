@@ -132,7 +132,7 @@ GWOVina docking settings can be changed by editing the `utils/params/dock_settin
 
 # Output Scores
 
-Scores are output in csv format. For example, scoring a single ligand pdbqt containing 20 docked poses against a single receptor file would yield the following output:
+Scores are output in csv format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of MLScore also includes a measure of the prediction confidence.
 
 |Receptor      |Ligand        |xgbscore_multi|mlpscore_multi_best_average|wdscore_multi_best_average|multi_consensus|multi_consensus_stdev|multi_consensus_range|
 |--------------|--------------|--------------|---------------------------|--------------------------|---------------|---------------------|---------------------|
