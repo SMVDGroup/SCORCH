@@ -8,7 +8,12 @@
 
 ---
 
-MLScore is a scoring function based on a consensus of machine learning models. The contributing models were trained on multiple docked ligand poses labelled by RMSD, meaning only well docked strong binders are rewarded, and poorly docked strong binders and all weak binders are punished.
+MLScore is a scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. MLScore scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
+
+MLScore uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](), [Vina](), and [GWOVina]() docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
+
+MLScore uses a variety of descriptors to characterize a docked pose, including [Binana]() and [ECIFs](). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. MLScore has used over XXX poses in its training. As a result, MLScore avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
+
 
 ![](pose_labels.gif)
 
@@ -70,29 +75,13 @@ python scoring.py \
 -ligand /home/user/ligands/ligand.pdbqt
 ```
 
-This would print the results to stdout; they could instead be redirected to a file:
-
-```bash
-python scoring.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/ligands/ligand.pdbqt > scoring_results.csv
-```
-
-The `-out` argument could be used to achieve exactly the same result:
+Scoring could be sped up and monitored by using some optional flags.
 
 ```bash
 python scoring.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/ligands/ligand.pdbqt  \
--out scoring_results.csv
-```
-
-Scoring could also be sped up and monitored by using some optional flags:
-
-```bash
-python scoring.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/ligands/ligand.pdbqt  \
+# this writes the output scores to a file
 -out scoring_results.csv \
 # this parallelises the scoring over 6 threads
 -threads 6 \
@@ -100,12 +89,12 @@ python scoring.py \
 -verbose
 ```
 
-**Note - the `-verbose` flag must be used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file**
+Note - the `-verbose` flag must be used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file.
 
 ### Scoring Multiple PDBQT Ligands Against a Single PDBQT Receptor
 ---
 
-For scoring all ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory filepath to the `-ligand` argument:
+For scoring all ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
 
 
 ```bash
@@ -115,37 +104,12 @@ python scoring.py \
 -out scoring_results.csv
 ```
 
-### Scoring Multiple PDBQT Ligands Against Multiple PDBQT Receptors
----
-
-The scoring function can also take a folder of folders as an argument to score multiple ligands against multiple receptors. For example, say you have a benchmarking dataset stored in the following way in the folder `dataset`:
-
-```
-dataset
-└───TargetA
-│   │   TargetA_receptor.pdbqt
-│   │   TargetA_ligand.pdbqt
-│
-└───TargetB
-    │   TargetB_receptor.pdbqt
-    │   TargetB_ligand.pdbqt
-```
-
-As long as, in each subfolder, there is **one receptor file with the suffix receptor.pdbqt** and **one ligand file with the suffix ligand.pdbqt**, the scoring function can return scores for `TargetA_ligand.pdbqt` against `TargetA_receptor.pdbqt` and `TargetB_ligand.pdbqt` against `TargetB_receptor.pdbqt`. To do this, just supply the parent directory to both the `-ligand` and `-receptor` arguments:
-
-```bash
-python scoring.py \
--receptor /home/user/dataset/ \
--ligand /home/user/dataset/  \
--out scoring_results.csv
-```
-
 ### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
 ---
 
 The scoring function also includes a full pipeline to convert SMILES ligands to 3D pdbqt files using [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/), dock them using [GWOVina](https://doi.org/10.1111/cbdd.13764), and score them with MLScore.
 
-Say you wish to determine whether some ligands could be potent influenza neuraminidase inhibitors. SMILES inputs should be supplied as .smi or .txt files, with one SMILES ligand and SMILE identifier per line separated by a space. For example, you have a .smi or .txt file of ligands as SMILES - `/home/user/smiles/influenza_inhibitors.smi` - which contains the following:
+SMILES inputs should be supplied as .smi or .txt files, with one SMILES ligand and SMILE identifier per line separated by a space. For example, you have a .smi or .txt file of ligands as SMILES - `/home/user/smiles/influenza_inhibitors.smi` - which contains the following:
 
 ```bash
 CCC(CC)O[C@@H]1C=C(C[C@H]([C@H]1NC(=O)C)O)C(=O)OCC 49817880
@@ -163,29 +127,8 @@ python scoring.py \
 -out influenza_results.csv
 ```
 
-Again, this can be done more quickly and informatively with additional user arguments:
+GWOVina docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. The additional `padding` variable is a value in angstroms which is added to the center coordinate of the reference ligand to determine the docking site limits.
 
-```bash
-python scoring.py \
--receptor /home/user/receptors/influenza_neuraminidase.pdbqt \
--ligand /home/user/smiles/influenza_inhibitors.smi  \
--ref_lig /home/user/ligands/oseltamivir.pdb
--out influenza_results.csv \
--threads 6 \
--verbose
-```
-
-By default, GWOVina docking settings are identical to those used in the publication. However, these can be changed by manually editing the `utils/params/dock_settings.json` file in the scoring function folder:
-
-```json
-{"gwovina_settings": {"exhaustiveness":3,
-                     "num_wolves":1,
-                     "num_modes":20,
-                     "energy_range":4},
-"padding":12}
-```
-
-The `padding` variable is a value in angstroms which is added to the center coordinate of the reference ligand to determine the docking site limits.
 
 # Output Scores
 
@@ -203,13 +146,3 @@ Scores are output in csv format. For example, scoring a single ligand pdbqt cont
 |receptor.pdbqt|ligand_pose_8 |0.9990158     |0.8433915                  |0.757661                  |0.8666894      |0.099900395          |0.24135482           |
 |receptor.pdbqt|ligand_pose_9 |0.48365158    |0.7629251                  |0.70412195                |0.65023285     |0.12021217           |0.2792735            |
 |receptor.pdbqt|ligand_pose_10|0.004160531   |0.07061309                 |0.1636547                 |0.07947611     |0.06541413           |0.15949416           |
-|receptor.pdbqt|ligand_pose_11|0.08189643    |0.6112932                  |0.47703212                |0.39007393     |0.22470208           |0.5293968            |
-|receptor.pdbqt|ligand_pose_12|0.014417216   |0.2984496                  |0.3226113                 |0.21182604     |0.1399372            |0.3081941            |
-|receptor.pdbqt|ligand_pose_13|0.016477646   |0.36441794                 |0.31394863                |0.23161475     |0.15351388           |0.3479403            |
-|receptor.pdbqt|ligand_pose_14|0.010164384   |0.23590061                 |0.21350199                |0.15318899     |0.10154623           |0.22573623           |
-|receptor.pdbqt|ligand_pose_15|0.01252496    |0.2042825                  |0.21431309                |0.14370686     |0.09284995           |0.20178813           |
-|receptor.pdbqt|ligand_pose_16|0.9616012     |0.820614                   |0.71008056                |0.83076525     |0.10293345           |0.25152063           |
-|receptor.pdbqt|ligand_pose_17|0.18216649    |0.26185253                 |0.18601812                |0.21001238     |0.03669023           |0.079686046          |
-|receptor.pdbqt|ligand_pose_18|0.031303126   |0.51423347                 |0.4771736                 |0.3409034      |0.21944264           |0.48293033           |
-|receptor.pdbqt|ligand_pose_19|0.0070598735  |0.22070605                 |0.2573203                 |0.1616954      |0.11036081           |0.25026044           |
-|receptor.pdbqt|ligand_pose_20|0.4792845     |0.41491276                 |0.3693905                 |0.4211959      |0.045083493          |0.10989401           |
