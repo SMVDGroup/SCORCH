@@ -1,5 +1,5 @@
-{"gwovina_settings": {"exhaustiveness":3,
-                     "num_wolves":1,
+{"gwovina_settings": {"exhaustiveness":32,
+                     "num_wolves":40,
                      "num_modes":20,
                      "energy_range":4},
 "padding":12}
