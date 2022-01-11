@@ -10,18 +10,11 @@
 #######################################################################
 
 import os
-from biopandas.mol2 import PandasMol2
 from biopandas.pdb import PandasPdb
 import pandas as pd
-from warnings import filterwarnings
-import pprint
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import subprocess
-from tqdm import tqdm
-import shutil
-import sys
-from rdkit import RDLogger
 
 stem_path = os.getcwd()
 
@@ -73,7 +66,7 @@ def get_coordinates(file, padding): # find the center x, y, z coordinates of the
 
 def dock_file(docker_command, protein_filepath, ligand_filepath, center_x, center_y, center_z, size_x, size_y, size_z, ex, nw, nm, er, outfile): # dock the decoy pdbqt to the receptor pdbqt using GWOVina CLI
     ligand_name = ligand_filepath.split('/')[-1]
-    os.system(f'{docker_command} --receptor {protein_filepath} --ligand {ligand_filepath}  --center_x  {center_x} --center_y {center_y} --center_z {center_z} --size_x  {size_x} --size_y {size_y}  --size_z {size_z}' \
+    os.system(f'{docker_command} --receptor {protein_filepath} --ligand {ligand_name}  --center_x  {center_x} --center_y {center_y} --center_z {center_z} --size_x  {size_x} --size_y {size_y}  --size_z {size_z}' \
               f' --exhaustiveness={ex} --num_wolves={nw} --num_modes={nm} --energy_range={er} --out {outfile}')
 
 def autodock_convert(merged_tuple_filepaths): # converts files from .pdb format to .pdbqt format using AutoDockTools
