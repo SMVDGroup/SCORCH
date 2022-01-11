@@ -12,12 +12,8 @@
 
 
 from rdkit import Chem
-from rdkit.Chem import rdchem
 from rdkit.Chem import rdMolDescriptors
-import rdkit
-import os, sys
 import openbabel as ob
-from rdkit.Chem import PeriodicTable
 
 def CalculateKappaAlapha1(mol):
     """
