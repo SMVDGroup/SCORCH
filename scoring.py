@@ -12,7 +12,6 @@
 
 # import all libraries and ignore tensorflow warnings
 import textwrap
-import time
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
@@ -358,7 +357,6 @@ def parse_args(args):
             for model in models:
                 params[model.replace('-','')] = True
 
-        params['dir'] = False
         params['screen'] = False
         params['single'] = False
         params['pose_1'] = False
@@ -380,20 +378,6 @@ def parse_args(args):
 
         if '-detailed' in args:
             params['concise'] = False
-
-        if params['ligand'] == params['receptor']:
-            receptors = list()
-            ligands = list()
-            params['dir'] = True
-            folders = os.listdir(params['ligand'])
-            for folder in folders:
-                files_in_folder = os.listdir(f'{params["ligand"]}{folder}')
-                receptor = [os.path.join(f'{params["ligand"]}{folder}',f'{f}') for f in files_in_folder if 'receptor' in f][0]
-                receptors.append(receptor)
-                ligand = [os.path.join(f'{params["ligand"]}{folder}',f'{f}') for f in files_in_folder if 'ligand' in f][0]
-                ligands.append(ligand)
-            params['ligand'] = ligands
-            params['receptor'] = receptors
 
         elif os.path.isdir(params['ligand']) == True:
             params['ligand'] = [os.path.join(params['ligand'], file) for file in os.listdir(params['ligand'])]
@@ -538,8 +522,6 @@ def print_intro(params):
 
     logging.info('**************************************************************************\n')
 
-    if params['dir']:
-        logging.info(f'Parsed {len(params["ligand"])} protein-ligand complexes for scoring...\n')
 
     if params['screen']:
         logging.info(f'Parsed {len(params["ligand"])} ligands for scoring against a single receptor...\n')
@@ -668,6 +650,7 @@ def scoring(params):
             elif 'linux' in platform.lower():
                 os_name = 'linux'
 
+            logging.info("Docking pdbqt ligands...")
             for pdbqt in tqdm(pdbqts):
                 dock_file(
                           os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
@@ -744,7 +727,7 @@ def scoring(params):
     minimum_val = 1-max_std
     maxmum_val = 1
     merged_results['model_consensus_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
-    merged_results['model_confidence'] = ((1-merged_results['model_consensus_stdev'])-minimum_val)/max_std
+    merged_results['model_certainty'] = ((1-merged_results['model_consensus_stdev'])-minimum_val)/max_std
 
     if params['concise']:
         merged_results = merged_results[['Receptor',
@@ -753,7 +736,7 @@ def scoring(params):
                                          'ff_nn_models_average',
                                          'wd_nn_models_average',
                                          'model_consensus',
-                                         'model_confidence']].copy()
+                                         'model_certainty']].copy()
 
     return merged_results
 

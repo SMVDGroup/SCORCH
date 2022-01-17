@@ -37,6 +37,43 @@ chmod 755 setup.sh
 ./setup.sh
 ```
 
+# Receptor & Ligand Preparation
+
+The scoring function only accepts `.pdbqt` receptor and ligand files as inputs. These should be prepared with [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using the `prepare_receptor4.py` and `prepare_ligand4.py` python scripts as follows:
+
+```bash
+# preparing a ligand
+~/utils/MGLTools-1.5.6/bin/pythonsh \
+~/utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py \
+-l path/to/ligand.pdb \
+-A hydrogens \
+-o path/to/save/ligand.pdbqt
+-U nphs
+
+# preparing a receptor
+~/utils/MGLTools-1.5.6/bin/pythonsh \
+~/utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py \
+-l path/to/receptor.pdb \
+-A hydrogens \
+-o path/to/save/receptor.pdbqt
+-U nphs
+```
+
+SDF and mol2 ligands can be converted to pdb format using `RDKit` in python:
+
+```python
+from rdkit import Chem
+
+# for mol2 files
+input_mol = Chem.MolFromMol2File("ligand.mol2")
+
+# for sdf files
+input_mol = Chem.SDMolSupplier("ligand.sdf")[0]
+
+# save the output as pdb
+Chem.MolToPDBFile(input_mol, "ligand.pdb")
+```
+
 # Usage
 
 To use the scoring function, the virtual environment needs to be activated first:
@@ -123,20 +160,49 @@ python scoring.py \
 
 GWOVina docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. The additional `padding` variable is a value in angstroms which is added to the center coordinate of the reference ligand to determine the docking site limits.
 
+### Importing the scoring function as a python module
+
+The main function from `scoring.py` can be imported and used in other python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
+
+```python
+from scoring import scoring
+
+input_parameters = {'binana_params': ['-receptor',
+                                       'path/to/receptor.pdbqt',
+                                       '-ligand',
+                                       'path/to/ligand.pdbqt'],
+                  'concise': True,
+                  'dock': False,
+                  'ligand': ['path/to/ligand.pdbqt'],
+                  'num_networks': 15,
+                  'out': 'output.csv',
+                  'pose_1': False,
+                  'receptor': ['path/to/receptor.pdbqt'],
+                  'ref_lig': None,
+                  'screen': False,
+                  'single': True,
+                  'threads': 4,
+                  'verbose': False,
+                  'wd_nn': True,
+                  'ff_nn': True,
+                  'xgboost_model': True}
+
+output = scoring(input_parameters)
+```
 
 # Output
 
-Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of MLScore also includes a measure of the prediction confidence.
+Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of MLScore also includes a measure of the prediction certainty.
 
-|Receptor      |Ligand        |xgbscore_multi|mlpscore_multi_best_average|wdscore_multi_best_average|multi_consensus|multi_consensus_stdev|multi_consensus_range|
-|--------------|--------------|--------------|---------------------------|--------------------------|---------------|---------------------|---------------------|
-|receptor.pdbqt|ligand_pose_1 |0.9974552     |0.783138                   |0.7250332                 |0.83520883     |0.11715221           |0.27242196           |
-|receptor.pdbqt|ligand_pose_2 |0.99668676    |0.77808344                 |0.73867756                |0.83781594     |0.113484696          |0.2580092            |
-|receptor.pdbqt|ligand_pose_3 |0.99672925    |0.82014656                 |0.7103614                 |0.8424124      |0.11796457           |0.28636783           |
-|receptor.pdbqt|ligand_pose_4 |0.9974542     |0.7051348                  |0.6221999                 |0.7749297      |0.16095018           |0.37525433           |
-|receptor.pdbqt|ligand_pose_5 |0.92504144    |0.6327202                  |0.6123963                 |0.723386       |0.14283314           |0.31264514           |
-|receptor.pdbqt|ligand_pose_6 |0.9980556     |0.8461044                  |0.74997765                |0.86471254     |0.10212856           |0.24807793           |
-|receptor.pdbqt|ligand_pose_7 |0.9973322     |0.80237544                 |0.65094346                |0.81688374     |0.14178425           |0.34638876           |
-|receptor.pdbqt|ligand_pose_8 |0.9990158     |0.8433915                  |0.757661                  |0.8666894      |0.099900395          |0.24135482           |
-|receptor.pdbqt|ligand_pose_9 |0.48365158    |0.7629251                  |0.70412195                |0.65023285     |0.12021217           |0.2792735            |
-|receptor.pdbqt|ligand_pose_10|0.004160531   |0.07061309                 |0.1636547                 |0.07947611     |0.06541413           |0.15949416           |
+|Receptor      |Ligand        |xgboost_model|ff_nn_models_average|wd_nn_models_average|model_consensus|model_certainty|
+|--------------|--------------|-------------|--------------------|--------------------|---------------|---------------|
+|receptor.pdbqt|ligand_pose_1 |0.9974552    |0.783138            |0.7250332           |0.83520883     |0.7514803      |
+|receptor.pdbqt|ligand_pose_2 |0.99668676   |0.77808344          |0.73867756          |0.83781594     |0.7592604      |
+|receptor.pdbqt|ligand_pose_3 |0.99672925   |0.82014656          |0.7103614           |0.8424124      |0.74975705     |
+|receptor.pdbqt|ligand_pose_4 |0.9974542    |0.7051348           |0.6221999           |0.7749297      |0.6585699      |
+|receptor.pdbqt|ligand_pose_5 |0.92504144   |0.6327202           |0.6123963           |0.723386       |0.69700235     |
+|receptor.pdbqt|ligand_pose_6 |0.9980556    |0.8461044           |0.74997765          |0.86471254     |0.7833506      |
+|receptor.pdbqt|ligand_pose_7 |0.9973322    |0.80237544          |0.65094346          |0.81688374     |0.69922733     |
+|receptor.pdbqt|ligand_pose_8 |0.9990158    |0.8433915           |0.757661            |0.8666894      |0.78807735     |
+|receptor.pdbqt|ligand_pose_9 |0.48365158   |0.7629251           |0.70412195          |0.65023285     |0.74498904     |
+|receptor.pdbqt|ligand_pose_10|0.004160531  |0.07061309          |0.1636547           |0.07947611     |0.8612344      |
