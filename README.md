@@ -45,10 +45,7 @@ To use the scoring function, the virtual environment needs to be activated first
 source .scoring/bin/activate
 ```
 
-
-## Overview
-
-The scoring function itself is supplied as a python script `scoring.py`. Arguments are:
+The scoring function is supplied as the python script `scoring.py`. Its arguments are:
 
 |Argument     |Value                                                                                     |Importance                  |
 |-------------|------------------------------------------------------------------------------------------|----------------------------|
@@ -62,10 +59,8 @@ The scoring function itself is supplied as a python script `scoring.py`. Argumen
 |`-pose_1`      |True if supplied, only the first model in pdbqt ligand files is scored                    |Optional (Default False)    |
 |`-detailed`    |True if supplied, outputs include scores from individual mlpscore and widedeepscore models|Optional (Default False)    |
 
-## Examples
----
+
 ### Scoring a Single PDBQT Ligand Against a Single PDBQT Receptor
----
 
 For scoring a single ligand - `/home/user/ligands/ligand.pdbqt` - against a single receptor - `/home/user/receptors/receptor.pdbqt`:
 
@@ -75,7 +70,7 @@ python scoring.py \
 -ligand /home/user/ligands/ligand.pdbqt
 ```
 
-Scoring could be sped up and monitored by using some optional flags.
+Scoring can be sped up and monitored by using some optional flags:
 
 ```bash
 python scoring.py \
@@ -92,7 +87,6 @@ python scoring.py \
 Note - the `-verbose` flag must be used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file.
 
 ### Scoring Multiple PDBQT Ligands Against a Single PDBQT Receptor
----
 
 For scoring all ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
 
@@ -105,11 +99,11 @@ python scoring.py \
 ```
 
 ### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
----
+
 
 The scoring function also includes a full pipeline to convert SMILES ligands to 3D pdbqt files using [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/), dock them using [GWOVina](https://doi.org/10.1111/cbdd.13764), and score them with MLScore.
 
-SMILES inputs should be supplied as .smi or .txt files, with one SMILES ligand and SMILE identifier per line separated by a space. For example, you have a .smi or .txt file of ligands as SMILES - `/home/user/smiles/influenza_inhibitors.smi` - which contains the following:
+SMILES inputs should be supplied as .smi or .txt files, with one SMILES ligand and optional SMILES identifier per line separated by a space. For example, you may have a `.smi` or `.txt` file of ligands which contains the following:
 
 ```bash
 CCC(CC)O[C@@H]1C=C(C[C@H]([C@H]1NC(=O)C)O)C(=O)OCC 49817880
@@ -130,9 +124,9 @@ python scoring.py \
 GWOVina docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. The additional `padding` variable is a value in angstroms which is added to the center coordinate of the reference ligand to determine the docking site limits.
 
 
-# Output Scores
+# Output
 
-Scores are output in csv format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of MLScore also includes a measure of the prediction confidence.
+Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of MLScore also includes a measure of the prediction confidence.
 
 |Receptor      |Ligand        |xgbscore_multi|mlpscore_multi_best_average|wdscore_multi_best_average|multi_consensus|multi_consensus_stdev|multi_consensus_range|
 |--------------|--------------|--------------|---------------------------|--------------------------|---------------|---------------------|---------------------|
