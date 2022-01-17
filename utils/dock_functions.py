@@ -31,8 +31,13 @@ def get_smiles(smi_datafile):
 
     lines = [l for l in lines if l != '']
 
-    for line in lines:
+    for count, line in enumerate(lines):
+        count = count + 1
         line = line.split(' ')
+        if len(line) == 1:
+            line = line[0].split('\t')
+        if len(line) == 1:
+            line = (line[0], count)
         smi_dict[line[1]] = line[0]
 
     return smi_dict
