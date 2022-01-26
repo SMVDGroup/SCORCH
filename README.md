@@ -15,7 +15,7 @@ ML-SCORCH uses `.pdbqt` files as input for the scoring, which is the format used
 ML-SCORCH uses a variety of descriptors to characterize a docked pose, including [Binana 1.3](https://git.durrantlab.pitt.edu/jdurrant/binana/-/tree/1.3) and [ECIFs](https://github.com/DIFACQUIM/ECIF). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. ML-SCORCH has used over 54,000 poses in its training. As a result, ML-SCORCH avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
 
 
-![](pose_labels.gif)
+![](https://raw.githubusercontent.com/miles-mcgibbon/miles-mcgibbon/main/.github/images/pose_labels.gif)
 
 ---
 
