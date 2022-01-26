@@ -165,7 +165,7 @@ GWOVina docking settings can be changed by editing the `utils/params/dock_settin
 The main function from `scoring.py` can be imported and used in other python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
 
 ```python
-from scoring import scoring
+from scorch import scoring
 
 input_parameters = {'binana_params': ['-receptor',
                                        'path/to/receptor.pdbqt',
