@@ -1,4 +1,4 @@
-# MLScore
+# ML-SCORCH
 
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.6.9-blue)](https://www.python.org/downloads/release/python-369/)
@@ -8,11 +8,11 @@
 
 ---
 
-MLScore is a scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. MLScore scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
+ML-SCORCH is a scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. ML-SCORCH scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
 
-MLScore uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](https://autodock.scripps.edu/), [Vina](https://dx.doi.org/10.1002/jcc.21334), and [GWOVina](https://cbbio.online/software/gwovina/index.html) docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
+ML-SCORCH uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](https://autodock.scripps.edu/), [Vina](https://dx.doi.org/10.1002/jcc.21334), and [GWOVina](https://cbbio.online/software/gwovina/index.html) docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
 
-MLScore uses a variety of descriptors to characterize a docked pose, including [Binana 1.3](https://git.durrantlab.pitt.edu/jdurrant/binana/-/tree/1.3) and [ECIFs](https://github.com/DIFACQUIM/ECIF). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. MLScore has used over 54,000 poses in its training. As a result, MLScore avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
+ML-SCORCH uses a variety of descriptors to characterize a docked pose, including [Binana 1.3](https://git.durrantlab.pitt.edu/jdurrant/binana/-/tree/1.3) and [ECIFs](https://github.com/DIFACQUIM/ECIF). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. ML-SCORCH has used over 54,000 poses in its training. As a result, ML-SCORCH avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
 
 
 ![](pose_labels.gif)
@@ -23,14 +23,14 @@ MLScore uses a variety of descriptors to characterize a docked pose, including [
 
 Installation on linux and mac is achieved via [virtualenv](https://virtualenv.pypa.io/en/latest/). The installation of virtualenv, a local build of python 3.6.9, scoring function dependencies and scoring function setup is all performed with the supplied setup bash script.
 
-To install MLScore:
+To install ML-SCORCH:
 
 ```bash
 # clone the GitHub repository
-git clone https://github.com/miles-mcgibbon/MLSCORE.git
+git clone https://github.com/miles-mcgibbon/ML-SCORCH.git
 
 # ensure setup.sh is executable
-cd MLSCORE
+cd ML-SCORCH
 chmod 755 setup.sh
 
 # execute the setup script
@@ -138,7 +138,7 @@ python scoring.py \
 ### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
 
 
-The scoring function also includes a full pipeline to convert SMILES ligands to 3D pdbqt files using [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/), dock them using [GWOVina](https://doi.org/10.1111/cbdd.13764), and score them with MLScore.
+The scoring function also includes a full pipeline to convert SMILES ligands to 3D pdbqt files using [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/), dock them using [GWOVina](https://doi.org/10.1111/cbdd.13764), and score them with ML-SCORCH.
 
 SMILES inputs should be supplied as .smi or .txt files, with one SMILES ligand and optional SMILES identifier per line separated by a space. For example, you may have a `.smi` or `.txt` file of ligands which contains the following:
 
@@ -192,7 +192,7 @@ output = scoring(input_parameters)
 
 # Output
 
-Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of MLScore also includes a measure of the prediction certainty.
+Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of ML-SCORCH also includes a measure of the prediction certainty.
 
 |Receptor      |Ligand        |xgboost_model|ff_nn_models_average|wd_nn_models_average|model_consensus|model_certainty|
 |--------------|--------------|-------------|--------------------|--------------------|---------------|---------------|
