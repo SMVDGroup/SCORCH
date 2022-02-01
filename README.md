@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 -return_pose_scores# SCORCH
+=======
+# SCORCH
+>>>>>>> 2a86f1dd07e8b2b9c818443d97be01e659407d61
 
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.6.9-blue)](https://www.python.org/downloads/release/python-369/)
@@ -82,7 +86,11 @@ To use the scoring function, the virtual environment needs to be activated first
 source .scoring/bin/activate
 ```
 
+<<<<<<< HEAD
 The scoring function is supplied as the Python script `scorch.py`. Its main arguments are:
+=======
+The scoring function is supplied as the Python script `scoring.py`. Its main arguments are:
+>>>>>>> 2a86f1dd07e8b2b9c818443d97be01e659407d61
 
 |Argument     |Value                                                                                     |Importance                  |
 |-------------|------------------------------------------------------------------------------------------|----------------------------|
@@ -90,7 +98,11 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 |`-ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                 |Essential                   |
 |`-ref_lig`    |Filepath to example ligand in receptor binding site (pdb or pdbqt)                       |Essential for SMILES ligands|
 |`-out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
+<<<<<<< HEAD
 |`-return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
+=======
+|`-return_scores_poses` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
+>>>>>>> 2a86f1dd07e8b2b9c818443d97be01e659407d61
 |`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
 |`-verbose`     |If supplied, progress bars and indicators displayed while scoring                  |Optional (Default False)    |
 
@@ -153,7 +165,11 @@ Docking settings can be changed by editing the `utils/params/dock_settings.json`
 
 ### Importing SCORCH as a Python module
 
+<<<<<<< HEAD
 The main function from `scorch.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
+=======
+The main function from `scoring.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
+>>>>>>> 2a86f1dd07e8b2b9c818443d97be01e659407d61
 
 ```python
 from scorch import scoring
@@ -163,7 +179,11 @@ input_parameters = {'binana_params': ['-receptor',
                                        '-ligand',
                                        'path/to/ligand.pdbqt'],
                   'dock': False,
+<<<<<<< HEAD
 		  '-return_pose_scores': False,
+=======
+		  '-return_poses_scores': False,
+>>>>>>> 2a86f1dd07e8b2b9c818443d97be01e659407d61
                   'ligand': ['path/to/ligand.pdbqt'],
                   'out': 'output.csv',
                   'receptor': ['path/to/receptor.pdbqt'],
@@ -180,6 +200,7 @@ Scores are output in `.csv` format. For example, scoring a single ligand pdbqt c
 
 |Receptor      |Ligand        |SCORCH_score  |SCORCH_certainty|
 |--------------|--------------|--------------|----------------|
+<<<<<<< HEAD
 |receptor.pdbqt|ligand_pose_1      |0.83521       |0.75148         |
 |receptor.pdbqt|ligand_pose_2      |0.83781       |0.75926         |
 |receptor.pdbqt|ligand_pose_3      |0.84241       |0.74976         |
@@ -190,3 +211,15 @@ Scores are output in `.csv` format. For example, scoring a single ligand pdbqt c
 |receptor.pdbqt|ligand_pose_8      |0.86669       |0.78808         |
 |receptor.pdbqt|ligand_pose_9      |0.65023       |0.74499         |
 |receptor.pdbqt|ligand_pose_10     |0.07947       |0.86123         |
+=======
+|receptor.pdbqt|ligand_1      |0.83521       |0.75148         |
+|receptor.pdbqt|ligand_2      |0.83781       |0.75926         |
+|receptor.pdbqt|ligand_3      |0.84241       |0.74976         |
+|receptor.pdbqt|ligand_4      |0.77493       |0.65857         |
+|receptor.pdbqt|ligand_5      |0.72339       |0.69700         |
+|receptor.pdbqt|ligand_6      |0.86471       |0.78335         |
+|receptor.pdbqt|ligand_7      |0.81688       |0.69923         |
+|receptor.pdbqt|ligand_8      |0.86669       |0.78808         |
+|receptor.pdbqt|ligand_9      |0.65023       |0.74499         |
+|receptor.pdbqt|ligand_10     |0.07947       |0.86123         |
+>>>>>>> 2a86f1dd07e8b2b9c818443d97be01e659407d61
