@@ -1,4 +1,4 @@
-# ML-SCORCH
+-return_pose_scores# SCORCH
 
 [![License](https://img.shields.io/badge/License-MIT-blue)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.6.9-blue)](https://www.python.org/downloads/release/python-369/)
@@ -8,11 +8,11 @@
 
 ---
 
-ML-SCORCH is a fast, fully multiprocessed scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. ML-SCORCH scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
+SCORCH is a fast scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. SCORCH scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
 
-ML-SCORCH uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](https://autodock.scripps.edu/), [Vina](https://dx.doi.org/10.1002/jcc.21334), and [GWOVina](https://cbbio.online/software/gwovina/index.html) docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
+SCORCH uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](https://autodock.scripps.edu/), [Vina](https://dx.doi.org/10.1002/jcc.21334), and [GWOVina](https://cbbio.online/software/gwovina/index.html) docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
 
-ML-SCORCH uses a variety of descriptors to characterize a docked pose, including [Binana 1.3](https://git.durrantlab.pitt.edu/jdurrant/binana/-/tree/1.3) and [ECIFs](https://github.com/DIFACQUIM/ECIF). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. ML-SCORCH has used over 54,000 poses in its training. As a result, ML-SCORCH avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
+SCORCH uses a variety of descriptors to characterize a docked pose, including [Binana 1.3](https://git.durrantlab.pitt.edu/jdurrant/binana/-/tree/1.3) and [ECIFs](https://github.com/DIFACQUIM/ECIF). The contributing models were trained on multiple docked poses for each ligand, labelled based on their RMSD to crystal structures. SCORCH has used over 54,000 poses in its training. As a result, SCORCH avoids biases and provides improved accuracy to identify true binder molecules in virtual screening. Read more in our [publication]().
 
 
 ![](https://raw.githubusercontent.com/miles-mcgibbon/miles-mcgibbon/main/.github/images/pose_labels.gif)
@@ -21,9 +21,9 @@ ML-SCORCH uses a variety of descriptors to characterize a docked pose, including
 
 # Installation
 
-Installation on linux and mac is achieved via [virtualenv](https://virtualenv.pypa.io/en/latest/). The installation of virtualenv, a local build of python 3.6.9, scoring function dependencies and scoring function setup is all performed with the supplied setup bash script.
+Installation on linux and mac is achieved via [virtualenv](https://virtualenv.pypa.io/en/latest/). The installation of virtualenv, a local build of Python 3.6.9, scoring function dependencies and scoring function setup is all performed with the supplied setup bash script.
 
-To install ML-SCORCH:
+To install SCORCH:
 
 ```bash
 # clone the GitHub repository
@@ -39,7 +39,7 @@ chmod 755 setup.sh
 
 # Receptor & Ligand Preparation
 
-The scoring function only accepts `.pdbqt` receptor and ligand files as inputs. These should be prepared with [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using the `prepare_receptor4.py` and `prepare_ligand4.py` python scripts as follows:
+The scoring function accepts `.pdbqt` receptor and ligand files as inputs. These should be prepared with [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using the `prepare_receptor4.py` and `prepare_ligand4.py` Python scripts as follows:
 
 ```bash
 # preparing a ligand
@@ -59,7 +59,7 @@ The scoring function only accepts `.pdbqt` receptor and ligand files as inputs. 
 -U nphs
 ```
 
-SDF and mol2 ligands can be converted to pdb format using `RDKit` in python:
+`.sdf` and `.mol2` ligands can be converted to `.pdb` format using `rdkit` in Python:
 
 ```python
 from rdkit import Chem
@@ -82,20 +82,19 @@ To use the scoring function, the virtual environment needs to be activated first
 source .scoring/bin/activate
 ```
 
-The scoring function is supplied as the python script `scoring.py`. Its arguments are:
+The scoring function is supplied as the Python script `scoring.py`. Its main arguments are:
 
 |Argument     |Value                                                                                     |Importance                  |
 |-------------|------------------------------------------------------------------------------------------|----------------------------|
-|`-receptor`    |Filepath to receptor file (pdbqt)                                                         |Essential                   |
-|`-ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                   |Essential                   |
-|`-ref_lig`    |Filepath to example ligand in receptor binding site (pdb or pdbqt)                        |Essential for SMILES ligands|
-|`-out`         |Filepath for output csv (If not supplied scores are written to stdout)                    |Optional (Default stdout)   |
-|`-threads`     |Number of threads to use                                                                  |Optional (Default 1)        |
-|`-num_networks`|Number of networks to average for mlpscore and widedeepscore model scores                 |Optional (Default 15)       |
-|`-verbose`     |True if supplied, progress bars and indicators displayed while scoring                    |Optional (Default False)    |
-|`-pose_1`      |True if supplied, only the first model in pdbqt ligand files is scored                    |Optional (Default False)    |
-|`-detailed`    |True if supplied, outputs include scores from individual mlpscore and widedeepscore models|Optional (Default False)    |
+|`-receptor`    |Filepath to receptor file (pdbqt)                                                       |Essential                   |
+|`-ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                 |Essential                   |
+|`-ref_lig`    |Filepath to example ligand in receptor binding site (pdb or pdbqt)                       |Essential for SMILES ligands|
+|`-out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
+|`-return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
+|`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
+|`-verbose`     |If supplied, progress bars and indicators displayed while scoring                  |Optional (Default False)    |
 
+Additional options are explained in the function help.
 
 ### Scoring a Single PDBQT Ligand Against a Single PDBQT Receptor
 
@@ -107,12 +106,15 @@ python scoring.py \
 -ligand /home/user/ligands/ligand.pdbqt
 ```
 
-Scoring can be sped up and monitored by using some optional flags:
+### Scoring Multiple PDBQT Ligands Against a Single PDBQT Receptor
+
+For scoring all `.pdbqt` ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
 
 ```bash
 python scoring.py \
 -receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/ligands/ligand.pdbqt  \
+-ligand /home/user/ligands/  \
+-out scoring_results.csv
 # this writes the output scores to a file
 -out scoring_results.csv \
 # this parallelises the scoring over 6 threads
@@ -121,26 +123,23 @@ python scoring.py \
 -verbose
 ```
 
-Note - the `-verbose` flag must be used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file.
+The `-verbose` flag is here used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file.
 
-### Scoring Multiple PDBQT Ligands Against a Single PDBQT Receptor
-
-For scoring all ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
-
-
-```bash
-python scoring.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/ligands/  \
--out scoring_results.csv
-```
 
 ### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
 
 
-The scoring function also includes a full pipeline to convert SMILES ligands to 3D pdbqt files using [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/), dock them using [GWOVina](https://doi.org/10.1111/cbdd.13764), and score them with ML-SCORCH.
+The module also includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
 
-SMILES inputs should be supplied as .smi or .txt files, with one SMILES ligand and optional SMILES identifier per line separated by a space. For example, you may have a `.smi` or `.txt` file of ligands which contains the following:
+```bash
+python scoring.py \
+-receptor /home/user/receptors/receptor.pdbqt \
+-ligand /home/user/smiles/ligands.smi  \
+-ref_lig /home/user/ligands/reference_ligand.pdb \
+-out influenza_results.csv
+```
+
+The `-ligand` input should be supplied as `.smi`  or text file, with one SMILES ligand and an optional identifier per line, as in this example:
 
 ```bash
 CCC(CC)O[C@@H]1C=C(C[C@H]([C@H]1NC(=O)C)O)C(=O)OCC 49817880
@@ -148,21 +147,13 @@ CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)[NH3+])C(=O)OCC 24848267
 CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)N)C(=O)NOC 118722031
 ```
 
-Alongside an .smi or .txt file, you need to supply a pdb or pdbqt ligand bound to the active site of the protein receptor file you are screening against as a reference for GWOVina docking using the `-ref_lig` argument:
+You also need to supply a `.pdb` or `.pdbqt` ligand on the active site of the protein receptor that you are screening using the `-ref_lig` argument. This is used to define the docking search space.
 
-```bash
-python scoring.py \
--receptor /home/user/receptors/influenza_neuraminidase.pdbqt \
--ligand /home/user/smiles/influenza_inhibitors.smi  \
--ref_lig /home/user/ligands/oseltamivir.pdb
--out influenza_results.csv
-```
+Docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. See the function help for additional details.
 
-GWOVina docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. The additional `padding` variable is a value in angstroms which is added to the center coordinate of the reference ligand to determine the docking site limits.
+### Importing SCORCH as a Python module
 
-### Importing the scoring function as a python module
-
-The main function from `scoring.py` can be imported and used in other python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
+The main function from `scoring.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
 
 ```python
 from scorch import scoring
@@ -171,38 +162,31 @@ input_parameters = {'binana_params': ['-receptor',
                                        'path/to/receptor.pdbqt',
                                        '-ligand',
                                        'path/to/ligand.pdbqt'],
-                  'concise': True,
                   'dock': False,
+		  '-return_pose_scores': False,
                   'ligand': ['path/to/ligand.pdbqt'],
-                  'num_networks': 15,
                   'out': 'output.csv',
-                  'pose_1': False,
                   'receptor': ['path/to/receptor.pdbqt'],
                   'ref_lig': None,
-                  'screen': False,
-                  'single': True,
                   'threads': 4,
-                  'verbose': False,
-                  'wd_nn': True,
-                  'ff_nn': True,
-                  'xgboost_model': True}
+                  'verbose': False}
 
 output = scoring(input_parameters)
 ```
 
 # Output
 
-Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of ML-SCORCH also includes a measure of the prediction certainty.
+Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of SCORCH also includes a measure of the prediction certainty.
 
-|Receptor      |Ligand        |xgboost_model|ff_nn_models_average|wd_nn_models_average|model_consensus|model_certainty|
-|--------------|--------------|-------------|--------------------|--------------------|---------------|---------------|
-|receptor.pdbqt|ligand_pose_1 |0.9974552    |0.783138            |0.7250332           |0.83520883     |0.7514803      |
-|receptor.pdbqt|ligand_pose_2 |0.99668676   |0.77808344          |0.73867756          |0.83781594     |0.7592604      |
-|receptor.pdbqt|ligand_pose_3 |0.99672925   |0.82014656          |0.7103614           |0.8424124      |0.74975705     |
-|receptor.pdbqt|ligand_pose_4 |0.9974542    |0.7051348           |0.6221999           |0.7749297      |0.6585699      |
-|receptor.pdbqt|ligand_pose_5 |0.92504144   |0.6327202           |0.6123963           |0.723386       |0.69700235     |
-|receptor.pdbqt|ligand_pose_6 |0.9980556    |0.8461044           |0.74997765          |0.86471254     |0.7833506      |
-|receptor.pdbqt|ligand_pose_7 |0.9973322    |0.80237544          |0.65094346          |0.81688374     |0.69922733     |
-|receptor.pdbqt|ligand_pose_8 |0.9990158    |0.8433915           |0.757661            |0.8666894      |0.78807735     |
-|receptor.pdbqt|ligand_pose_9 |0.48365158   |0.7629251           |0.70412195          |0.65023285     |0.74498904     |
-|receptor.pdbqt|ligand_pose_10|0.004160531  |0.07061309          |0.1636547           |0.07947611     |0.8612344      |
+|Receptor      |Ligand        |SCORCH_score  |SCORCH_certainty|
+|--------------|--------------|--------------|----------------|
+|receptor.pdbqt|ligand_pose_1      |0.83521       |0.75148         |
+|receptor.pdbqt|ligand_pose_2      |0.83781       |0.75926         |
+|receptor.pdbqt|ligand_pose_3      |0.84241       |0.74976         |
+|receptor.pdbqt|ligand_pose_4      |0.77493       |0.65857         |
+|receptor.pdbqt|ligand_pose_5      |0.72339       |0.69700         |
+|receptor.pdbqt|ligand_pose_6      |0.86471       |0.78335         |
+|receptor.pdbqt|ligand_pose_7      |0.81688       |0.69923         |
+|receptor.pdbqt|ligand_pose_8      |0.86669       |0.78808         |
+|receptor.pdbqt|ligand_pose_9      |0.65023       |0.74499         |
+|receptor.pdbqt|ligand_pose_10     |0.07947       |0.86123         |
