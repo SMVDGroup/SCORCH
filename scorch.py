@@ -1,5 +1,5 @@
 #######################################################################
-# MLScoring script version 1.0 - Run python scoring.py -h for help    #
+# SCORCH script version 1.0 - Run python scoring.py -h for help    #
 #                                                                     #
 # Script Authors:                                                     #
 # @sammoneykyrle                                                      #
@@ -44,15 +44,11 @@ stem_path = os.getcwd()
 
 def get_ligand_id(ligand):
     ###########################################
-    # Function:     #
-    # protein-ligand complex                  #
+    # Function: Get ligand ID from pose scores#
     #                                         #
-    # Inputs: BINANA parameters dictionary,   #
-    # ligand as a pdbqt string block,         #
-    # receptor pdbqt filepath                 #
+    # Inputs: Ligand pose name                #
     #                                         #
-    # Output: BINANA protein-ligand complex   #
-    # descriptor features as a DataFrame      #
+    # Output: Ligand ID base name             #
     ###########################################
 
     Ligand_ID = ligand.split('_pose')[0]
@@ -309,6 +305,16 @@ def binary_concat(dfs, headers):
     return master_df
 
 def parse_module_args(args_dict):
+
+    ###########################################
+    # Function: Parse user arguments when     #
+    # script is imported as a module          #
+    #                                         #
+    # Inputs: User arguments as a dictionary  #
+    #                                         #
+    # Output: Populated params dictionary     #
+    ###########################################
+
 
     command_input = list()
 
