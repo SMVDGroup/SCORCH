@@ -308,6 +308,26 @@ def binary_concat(dfs, headers):
     os.remove(os.path.join('utils','temp','features.bin'))
     return master_df
 
+def parse_module_args(args_dict):
+
+    command_input = list()
+
+    boolean_args = ['verbose','return_pose_scores']
+
+    for key, value in args_dict.items():
+        if key in boolean_args:
+            if value:
+                command_input.append(f'-{key}')
+        else:
+            command_input.append(f'-{key}')
+            command_input.append(str(value))
+
+    parsed_args = parse_args(command_input)
+
+    print(parsed_args)
+
+    return parsed_args
+
 def parse_args(args):
 
     ###########################################
@@ -357,7 +377,7 @@ def parse_args(args):
         params['screen'] = False
         params['single'] = False
         params['pose_1'] = False
-        params['rps'] = False
+        params['return_pose_scores'] = False
         params['dock'] = False
         params['concise'] = True
         params['num_networks'] = 15
@@ -371,7 +391,7 @@ def parse_args(args):
             logging.basicConfig(level=logging.CRITICAL, format='%(message)s')
 
         if '-return_pose_scores' in args:
-            params['rps'] = True
+            params['return_pose_scores'] = True
 
         if '-pose_1' in args:
             params['pose_1'] = True
@@ -726,7 +746,7 @@ def scoring(params):
     merged_results['SCORCH_score'] = merged_results.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
     merged_results['best_pose'] = np.where(merged_results.SCORCH_score == merged_results.SCORCH_pose_score, 1, 0)
 
-    if not params['rps']:
+    if not params['return_pose_scores']:
         merged_results = merged_results.loc[merged_results.best_pose == 1]
         merged_results = merged_results[['Receptor',
                                          'Ligand',

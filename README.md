@@ -156,18 +156,16 @@ Docking settings can be changed by editing the `utils/params/dock_settings.json`
 The main function from `scorch.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
 
 ```python
-from scorch import scoring
+from scorch import scoring, parse_module_args
 
-input_parameters = {'dock': False,
-		              '-return_pose_scores': False,
-                  'ligand': ['path/to/ligand.pdbqt'],
-                  'receptor': ['path/to/receptor.pdbqt'],
-                  'ref_lig': None,
+input_parameters = {'ligand': '/path/to/ligand.pdbqt',
+                  'receptor': '/path/to/receptor.pdbqt',
                   'threads': 4,
-                  'verbose': False,
-									'pose_1':False}
+                  'verbose': False}
 
-output = scoring(input_parameters)
+parsed_parameters = parse_module_args(input_parameters)
+
+output = scoring(parsed_parameters)
 ```
 
 # Output
