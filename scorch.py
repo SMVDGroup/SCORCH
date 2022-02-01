@@ -522,12 +522,7 @@ def print_intro(params):
 
     logging.info('**************************************************************************\n')
 
-
-    if params['screen']:
-        logging.info(f'Parsed {len(params["ligand"])} ligands for scoring against a single receptor...\n')
-
-    if params['single']:
-        logging.info('Parsed one ligand for scoring against a single receptor...\n')
+    logging.info(f'Parsed {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
 
     if params['dock']:
         ligand_count = len(open(params["ligand"]).read().split("\n"))
@@ -597,7 +592,14 @@ def scoring(params):
 
     print_intro(params)
 
-    params['binana_params'] = ['-receptor', args[args.index('-receptor') + 1], '-ligand', args[args.index('-ligand') + 1]]
+    if len(params['ligand']) == 1:
+        binana_ligand = params['ligand'][0]
+        binana_receptor = params['receptor']
+    else:
+        binana_ligand = os.path.dirname(params['ligand'][0]) + '/'
+        binana_receptor = params['receptor'][0]
+
+    params['binana_params'] = ['-receptor', binana_receptor, '-ligand', binana_ligand]
 
     if params['dock']:
         if params['ref_lig'] is None:
@@ -731,12 +733,13 @@ def scoring(params):
                                          'SCORCH_score',
                                          'SCORCH_certainty']].copy()
 
+    numerics = list(merged_results.select_dtypes(include=[np.number]))
+    merged_results[numerics] = merged_results[numerics].round(5)
     return merged_results
 
 if __name__ == "__main__":
 
     params = parse_args(sys.argv)
-    print(params)
     scoring_function_results = scoring(params)
     if not params['out']:
         sys.stdout.write(scoring_function_results.to_csv(index=False))
