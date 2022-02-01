@@ -42,6 +42,22 @@ filterwarnings('ignore')
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
 
+def get_ligand_id(ligand):
+    ###########################################
+    # Function:     #
+    # protein-ligand complex                  #
+    #                                         #
+    # Inputs: BINANA parameters dictionary,   #
+    # ligand as a pdbqt string block,         #
+    # receptor pdbqt filepath                 #
+    #                                         #
+    # Output: BINANA protein-ligand complex   #
+    # descriptor features as a DataFrame      #
+    ###########################################
+
+    Ligand_ID = ligand.split('_pose')[0]
+    return Ligand_ID
+
 def run_binana(params, lig, rec):
 
     ###########################################
@@ -125,7 +141,7 @@ def extract(params):
     df['Kier Flexibility'] = k
     return df
 
-def transform_df(df, single):
+def transform_df(df):
 
     ###########################################
     # Function: Condense and scale descriptor #
@@ -142,23 +158,14 @@ def transform_df(df, single):
     ###########################################
 
     reference_headers = json.load(open(os.path.join('utils','params','features.json')))
-    scaler_14 = reference_headers.get('for_scaler_14')
-    headers_14 = reference_headers.get('490_models_14')
     scaler_58 = reference_headers.get('for_scaler_58')
     headers_58 = reference_headers.get('492_models_58')
-    if single:
-        df = df[scaler_14]
-        scaler = joblib.load(os.path.join('utils','params','14_maxabs_scaler_params.save'))
-        scaled = scaler.transform(df)
-        df[df.columns] = scaled
-        df = df[headers_14]
 
-    else:
-        df = df[scaler_58]
-        scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
-        scaled = scaler.transform(df)
-        df[df.columns] = scaled
-        df = df[headers_58]
+    df = df[scaler_58]
+    scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
+    scaled = scaler.transform(df)
+    df[df.columns] = scaled
+    df = df[headers_58]
 
     return df
 
@@ -219,7 +226,7 @@ def run_networks(df, model_file, model_name):
 
     return predictions.reset_index(drop=True)
 
-def run_xgboost_models(df, single):
+def run_xgboost_models(df):
 
     ###########################################
     # Function: Get prediction from XGB model #
@@ -255,18 +262,18 @@ def test(params):
     results = []
 
     if params['ff_nn'] == True:
-        df = transform_df(features, single=True)
+        df = transform_df(features)
         mlp_result = run_networks(params['num_networks'],df,'ff_nn')
         results.append(mlp_result)
 
     if params['wd_nn'] == True:
-        df = transform_df(features, single=True)
+        df = transform_df(features)
         mlp_result = run_networks(params['num_networks'],df,'wd_nn')
         results.append(mlp_result)
 
     if params['xgboost_model'] == True:
-        df = transform_df(features, single=False)
-        xgb_result = run_xgboost_models(df, single=False)
+        df = transform_df(features)
+        xgb_result = run_xgboost_models(df)
         results.append(xgb_result)
 
     return np.mean(results)
@@ -332,7 +339,6 @@ def parse_args(args):
         sys.exit()
 
     try:
-        params['binana_params'] = ['-receptor', args[args.index('-receptor') + 1], '-ligand', args[args.index('-ligand') + 1]]
         params['ligand'] = args[args.index('-ligand') + 1]
         params['receptor'] = args[args.index('-receptor') + 1]
         try:
@@ -348,22 +354,13 @@ def parse_args(args):
         except:
             params['out'] = False
 
-        models = ['-ff_nn','-wd_nn','-xgboost_model']
-        args_check = list(map(lambda v: v in args, models))
-        if any(args_check):
-            for model, check in zip(models,args_check):
-                params[model] = args_check
-        else:
-            for model in models:
-                params[model.replace('-','')] = True
-
         params['screen'] = False
         params['single'] = False
         params['pose_1'] = False
+        params['rps'] = False
         params['dock'] = False
         params['concise'] = True
         params['num_networks'] = 15
-
 
         if '-verbose' in args:
             params['verbose'] = True
@@ -372,6 +369,9 @@ def parse_args(args):
             params['verbose'] = False
             tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
             logging.basicConfig(level=logging.CRITICAL, format='%(message)s')
+
+        if '-return_pose_scores' in args:
+            params['rps'] = True
 
         if '-pose_1' in args:
             params['pose_1'] = True
@@ -517,7 +517,7 @@ def print_intro(params):
     logging.info('\n')
     logging.info('**************************************************************************')
 
-    logging.info('MLScoring v1.0')
+    logging.info('SCORCH v1.0')
     logging.info('Miles McGibbon, Samuel Money-Kyrle, Vincent Blay & Douglas R. Houston\n')
 
     logging.info('**************************************************************************\n')
@@ -554,39 +554,23 @@ def prepare_models(params):
 
     models = {}
 
-    if params['xgboost_model']:
+    logging.info('XGBoost Model: Yes')
+    xgb_path = os.path.join('utils','models','xgboost_models','495_models_58_booster.pkl')
+    models['xgboost_model'] = pickle.load(open(xgb_path,'rb'))
 
-        logging.info('XGBoost Model: Yes')
-        xgb_path = os.path.join('utils','models','xgboost_models','495_models_58_booster.pkl')
-        models['xgboost_model'] = pickle.load(open(xgb_path,'rb'))
-    else:
+    logging.info('Feedforward NN Model : Yes')
+    logging.info(f'- Using Best {params["num_networks"]} Networks')
+    models['ff_nn'] = os.path.join('utils','models','ff_nn_models')
+    model_ranks = pickle.load(open(os.path.join(models['ff_nn'],'rankings.pkl'),'rb'))
+    model_ranks = model_ranks[:params["num_networks"]]
+    models['ff_nn'] = [os.path.join(models['ff_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
 
-        logging.info('XGBoost Model: No')
-
-    if params['ff_nn']:
-
-        logging.info('Feedforward NN Model : Yes')
-        logging.info(f'- Using Best {params["num_networks"]} Networks')
-        models['ff_nn'] = os.path.join('utils','models','ff_nn_models')
-        model_ranks = pickle.load(open(os.path.join(models['ff_nn'],'rankings.pkl'),'rb'))
-        model_ranks = model_ranks[:params["num_networks"]]
-        models['ff_nn'] = [os.path.join(models['ff_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
-    else:
-
-        logging.info('Feedforward NN Model : No')
-
-    if params['wd_nn']:
-
-        logging.info('W&D NN Model : Yes')
-        logging.info(f'- Using Best {params["num_networks"]} Networks')
-        models['wd_nn'] = os.path.join('utils','models','wd_nn_models')
-        model_ranks = pickle.load(open(os.path.join(models['wd_nn'],'rankings.pkl'),'rb'))
-        model_ranks = model_ranks[:params["num_networks"]]
-        models['wd_nn'] = [os.path.join(models['wd_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
-    else:
-
-        logging.info('W&D NN Model: No')
-
+    logging.info('W&D NN Model : Yes')
+    logging.info(f'- Using Best {params["num_networks"]} Networks')
+    models['wd_nn'] = os.path.join('utils','models','wd_nn_models')
+    model_ranks = pickle.load(open(os.path.join(models['wd_nn'],'rankings.pkl'),'rb'))
+    model_ranks = model_ranks[:params["num_networks"]]
+    models['wd_nn'] = [os.path.join(models['wd_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
     logging.info('\n')
 
     if params['pose_1']:
@@ -612,6 +596,8 @@ def scoring(params):
     ###########################################
 
     print_intro(params)
+
+    params['binana_params'] = ['-receptor', args[args.index('-receptor') + 1], '-ligand', args[args.index('-ligand') + 1]]
 
     if params['dock']:
         if params['ref_lig'] is None:
@@ -699,7 +685,7 @@ def scoring(params):
     features = multiprocess_wrapper(prepare_features, receptor_ligand_args, params['threads'])
     feature_headers = list(features[0][2])
     features_df = binary_concat([i[2] for i in features], feature_headers)
-    multi_pose_features = transform_df(features_df, single=False)
+    multi_pose_features = transform_df(features_df)
     multi_pose_features['Receptor'] = [i[0] for i in features]
     multi_pose_features['Ligand'] = [i[1] for i in features]
 
@@ -722,27 +708,35 @@ def scoring(params):
                     'ff_nn_models_average',
                     'wd_nn_models_average']
 
-    merged_results['model_consensus'] = merged_results[multi_models].mean(axis=1)
+    merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
     max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
-    minimum_val = 1-max_std
+    minimum_val = 1 - max_std
     maxmum_val = 1
-    merged_results['model_consensus_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
-    merged_results['model_certainty'] = ((1-merged_results['model_consensus_stdev'])-minimum_val)/max_std
+    merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
+    merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
 
-    if params['concise']:
+    merged_results = merged_results[['Receptor',
+                                     'Ligand',
+                                     'SCORCH_pose_score',
+                                     'SCORCH_certainty']].copy()
+
+    merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
+    merged_results['SCORCH_score'] = merged_results.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
+    merged_results['best_pose'] = np.where(merged_results.SCORCH_score == merged_results.SCORCH_pose_score, 1, 0)
+
+    if not params['rps']:
+        merged_results = merged_results.loc[merged_results.best_pose == 1]
         merged_results = merged_results[['Receptor',
                                          'Ligand',
-                                         'xgboost_model',
-                                         'ff_nn_models_average',
-                                         'wd_nn_models_average',
-                                         'model_consensus',
-                                         'model_certainty']].copy()
+                                         'SCORCH_score',
+                                         'SCORCH_certainty']].copy()
 
     return merged_results
 
 if __name__ == "__main__":
 
     params = parse_args(sys.argv)
+    print(params)
     scoring_function_results = scoring(params)
     if not params['out']:
         sys.stdout.write(scoring_function_results.to_csv(index=False))
