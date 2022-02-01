@@ -82,7 +82,7 @@ To use the scoring function, the virtual environment needs to be activated first
 source .scoring/bin/activate
 ```
 
-The scoring function is supplied as the Python script `scoring.py`. Its main arguments are:
+The scoring function is supplied as the Python script `scorch.py`. Its main arguments are:
 
 |Argument     |Value                                                                                     |Importance                  |
 |-------------|------------------------------------------------------------------------------------------|----------------------------|
@@ -101,7 +101,7 @@ Additional options are explained in the function help.
 For scoring a single ligand - `/home/user/ligands/ligand.pdbqt` - against a single receptor - `/home/user/receptors/receptor.pdbqt`:
 
 ```bash
-python scoring.py \
+python scorch.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/ligands/ligand.pdbqt
 ```
@@ -111,7 +111,7 @@ python scoring.py \
 For scoring all `.pdbqt` ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
 
 ```bash
-python scoring.py \
+python scorch.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/ligands/  \
 -out scoring_results.csv
@@ -132,7 +132,7 @@ The `-verbose` flag is here used in conjunction with the `-out` flag, otherwise 
 The module also includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
 
 ```bash
-python scoring.py \
+python scorch.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/smiles/ligands.smi  \
 -ref_lig /home/user/ligands/reference_ligand.pdb \
@@ -153,7 +153,7 @@ Docking settings can be changed by editing the `utils/params/dock_settings.json`
 
 ### Importing SCORCH as a Python module
 
-The main function from `scoring.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
+The main function from `scorch.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
 
 ```python
 from scorch import scoring
