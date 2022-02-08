@@ -40,7 +40,7 @@ python3 -m pip install virtualenv
 echo "**************************************"
 echo "Installing virtual environment for scoring function..."
 echo "**************************************"
-virtualenv .scorch --python=Python-3.6.9/python
+python3 -m virtualenv .scorch --python=Python-3.6.9/python
 
 # activate the scoring virtualenv
 echo "**************************************"
