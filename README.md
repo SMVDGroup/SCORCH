@@ -27,10 +27,10 @@ To install SCORCH:
 
 ```bash
 # clone the GitHub repository
-git clone https://github.com/miles-mcgibbon/ML-SCORCH.git
+git clone https://github.com/miles-mcgibbon/SCORCH.git
 
 # ensure setup.sh is executable
-cd ML-SCORCH
+cd SCORCH
 chmod 755 setup.sh
 
 # execute the setup script
