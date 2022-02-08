@@ -43,16 +43,16 @@ The scoring function accepts `.pdbqt` receptor and ligand files as inputs. These
 
 ```bash
 # preparing a ligand
-~/utils/MGLTools-1.5.6/bin/pythonsh \
-~/utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py \
+./utils/MGLTools-1.5.6/bin/pythonsh \
+./utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py \
 -l path/to/ligand.pdb \
 -A hydrogens \
 -o path/to/save/ligand.pdbqt
 -U nphs
 
 # preparing a receptor
-~/utils/MGLTools-1.5.6/bin/pythonsh \
-~/utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py \
+./utils/MGLTools-1.5.6/bin/pythonsh \
+./utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py \
 -l path/to/receptor.pdb \
 -A hydrogens \
 -o path/to/save/receptor.pdbqt
