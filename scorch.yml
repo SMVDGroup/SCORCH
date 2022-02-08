@@ -1,0 +1,29 @@
+name: scorch
+channels:
+- rdkit
+- openbabel
+- conda-forge
+- defaults
+dependencies:
+- protobuf=3.14.0
+- rich=10.3.0
+- openbabel=2.4.1
+- rdkit=2018.09.01
+- pip
+- pip:
+  - biopandas==0.2.7
+  - joblib==1.0.1
+  - keras-preprocessing==1.1.2
+  - requests==2.25.1
+  - scikit-learn==0.24.2
+  - scipy==1.5.4
+  - sklearn==0.0
+  - tensorboard==2.5.0
+  - tensorflow==2.4.0
+  - tensorflow-estimator==2.4.0
+  - tqdm==4.61.1
+  - urllib3==1.26.5
+  - xgboost==1.4.2
+  - pandas==1.1.5
+  - numpy==1.19.5
+  - scipy==1.5.4
