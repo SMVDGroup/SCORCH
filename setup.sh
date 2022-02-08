@@ -4,9 +4,16 @@
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         installcommand=$(command -v yum)
 	if [ -z "$installcommand" ]; then
-      		yes | sudo apt-get install libssl-dev python3-pip build-essential manpages-dev
-	else
-      		yes | sudo yum install openssl libssl-dev python3-pip build-essential manpages-dev
+		echo "Found Debian!"
+		yes | sudo add-apt-repository ppa:deadsnakes/ppa
+		sudo apt-get update
+      		yes | sudo apt-get install libssl-dev python3-pip build-essential manpages-dev libpython3.6-dev
+	else	
+		echo "Found RedHat!"
+		yum-config-manager --add-repo ppa:deadsnakes/ppa
+		yum-config-manager --enable ppa:deadsnakes/ppa
+		sudo yum update
+      		yes | sudo yum install openssl libssl-dev python3-pip build-essential manpages-dev libpython3.6-dev
 	fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
         :
@@ -28,7 +35,7 @@ tar -xf Python-3.6.9.tgz && rm -f Python-3.6.9.tgz
 echo "**************************************"
 echo "Installing Python 3.6.9..."
 echo "**************************************"
-cd Python-3.6.9/ && ./configure -prefix=$PWD -enable-shared  && make && sudo make install && cd -
+cd Python-3.6.9/ && sudo ./configure -prefix=$PWD -enable-shared  && sudo make && sudo make altinstall && cd -
 
 # make sure virtualenv is installed
 echo "**************************************"
