@@ -1,7 +1,7 @@
             MGLTools version 1.5.6 - BINARY DISTRIBUTION
 =======================================================================
-Thank you for installing MGLTools version 1.5.6. 
-MGLTools is a collection of Python-based software tools developed 
+Thank you for installing MGLTools version 1.5.6.
+MGLTools is a collection of Python-based software tools developed
 at the Molecular Graphics Lab (MGL) of the Scripps Research Institute.
 This distribution contains a pre-compiled Python interpreter (version 2.5),
 and the following stand-alone applications:
@@ -15,40 +15,40 @@ ADT	-  AutoDockTools
 ****************************************************************************
   To be able to start any of these applications in a Terminal Window
   you will need to:
-  - either add "/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/share/bin" to the path environment 
+  - either add "utils/MGLTools-1.5.6/share/bin" to the path environment
     variable in your .cshrc or .bashrc as in the following example:
-     .cshrc  - set path = (/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin $path)
-     .bashrc - export PATH="/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin:"$PATH
+     .cshrc  - set path = (utils/MGLTools-1.5.6/bin $path)
+     .bashrc - export PATH="utils/MGLTools-1.5.6/bin:"$PATH
   - or create aliases in your .cshrc or .bashrc as in the next examples:
      .cshrc:
-     alias pmv /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pmv
-     alias adt /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/adt
-     alias vision /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/vision
-     alias pythonsh /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+     alias pmv utils/MGLTools-1.5.6/bin/pmv
+     alias adt utils/MGLTools-1.5.6/bin/adt
+     alias vision utils/MGLTools-1.5.6/bin/vision
+     alias pythonsh utils/MGLTools-1.5.6/bin/pythonsh
      .bashrc:
-     alias pmv='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pmv'
-     alias adt='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/adt'
-     alias vision='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/vision'
-     alias pythonsh='/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh'
+     alias pmv='utils/MGLTools-1.5.6/bin/pmv'
+     alias adt='utils/MGLTools-1.5.6/bin/adt'
+     alias vision='utils/MGLTools-1.5.6/bin/vision'
+     alias pythonsh='utils/MGLTools-1.5.6/bin/pythonsh'
 
 Rehash your path, if needed, for these changes to be in effect:
        c-shell:
-	    > rehash 
+	    > rehash
        bash-shell:
-	    > hash 
+	    > hash
 
-To use PMV, ADT or VISION type pmv, adt or vision respectively; 
+To use PMV, ADT or VISION type pmv, adt or vision respectively;
 for example:
-     > pmv 
+     > pmv
 
-A Python Molecule Viewer should come up.  You can load files from the 
-/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/Data directory and start playing with PMV.  
-Simple networks and data for VISION are located in 
-/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/MGLToolsPckgs/Vision/Examples.
+A Python Molecule Viewer should come up.  You can load files from the
+utils/MGLTools-1.5.6/Data directory and start playing with PMV.
+Simple networks and data for VISION are located in
+utils/MGLTools-1.5.6/MGLToolsPckgs/Vision/Examples.
 
 To run Python interpreter type "pythonsh":
-    > pythonsh                    
-                
+    > pythonsh
+
 **************************************************************************
 **  Pmv script command line options
 **************************************************************************
@@ -94,13 +94,13 @@ To run Python interpreter type "pythonsh":
      Display protein as ribbon, non protein as sticks and balls
      and color by atom type
 	         pmv -i --dmode sssb --cmode cr myprot.pdb
-	         pmv -i -m sssb -c cr myprot.pdb 
+	         pmv -i -m sssb -c cr myprot.pdb
 
 **************************************************************************
 **  CITING THESE TOOLS IN PUBLICATIONS
 **************************************************************************
-Whether you plan to use this software for Commercial or Non-commercial purposes, 
-we ask that you acknowledge using these tools in any publications arising 
+Whether you plan to use this software for Commercial or Non-commercial purposes,
+we ask that you acknowledge using these tools in any publications arising
 from their use. Under the PMV Help menu there is a citation command providing various
 papers to be cited for various tools included in this distribution.
 
@@ -113,18 +113,18 @@ more license information is available below
 **************************************************************************
 You can refer to the license information available for the following packages:
 
-   -Python packages developed at MGL(Pmv, DejaVu, ViewerFramework, 
-    AutoDockTools, MolKit, NetworkEditor, Vision, PyBabel, mglutil): 
+   -Python packages developed at MGL(Pmv, DejaVu, ViewerFramework,
+    AutoDockTools, MolKit, NetworkEditor, Vision, PyBabel, mglutil):
         ./LICENSES or http://www.scripps.edu/~sanner/python/tsrilicense.html
 
    -Platform dependent packages:
       mslib - library to compute molecular surfaces:
         ./LICENSES or http://www.scripps.edu/pub/olson-web/share/packager/msmsLicense.html
-      stride - the knowledge-based protein secondary structure assignment 
+      stride - the knowledge-based protein secondary structure assignment
 	from atomic coordinates library:
         ./LICENSES or http://www.scripps.edu/~sanner/python/strideLicense.html.
 
-Unless otherwise stated, packages that do not specify a license are released 
+Unless otherwise stated, packages that do not specify a license are released
 under the MOZILLA Open Source License.
 
 **************************************************************************
@@ -143,8 +143,8 @@ You can subscribe or search the archives of these lists at:
    http://mgldev.scripps.edu/mailman/listinfo
 
 The following lists are relevant to this distribution
- 
- -autodock: a community of AutoDock, AutoGrid and AutoDockTools (ADT) users 
+
+ -autodock: a community of AutoDock, AutoGrid and AutoDockTools (ADT) users
   with lots of experience to share
   http://mgldev.scripps.edu/mailman/listinfo/autodock
 
@@ -157,7 +157,7 @@ The following lists are relevant to this distribution
  -MGLTools support for questions regarding installing the MGLTools.
   http://mgldev.scripps.edu/mailman/listinfo/mglsupport
 
-Please visit our Frequently Asked Questions page if you have any problems 
+Please visit our Frequently Asked Questions page if you have any problems
 installing or running our tools (http://mgltools.scripps.edu/documentation/faq).
 For other inquiries, send an email to mgltools:
  mgltools@scripps.edu

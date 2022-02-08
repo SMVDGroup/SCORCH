@@ -6,7 +6,7 @@
 
 ######
 ## Set some environment variable.
-MGL_ROOT="/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6" 
+MGL_ROOT="utils/MGLTools-1.5.6"
 export MGL_ROOT
 
 ########
@@ -58,7 +58,7 @@ case "`uname -s`" in
 	export LD_LIBRARY_PATH
 	;;
     Darwin*)
-        # NOTE: the user may have already set DISPLAY, so don't change it    
+        # NOTE: the user may have already set DISPLAY, so don't change it
         if [ ! "$DISPLAY" ]; then
             DISPLAY=":0.0"
             export DISPLAY
@@ -68,8 +68,8 @@ case "`uname -s`" in
         ps -wx -ocommand | grep -e '[X]11' > /dev/null;
         if [ \"$?\" != \"0\" -a ! -f ~/.xinitrc ]; then
             echo \"rm -f ~/.xinitrc\" > ~/.xinitrc
-            sed 's/xterm/# xterm/' /usr/X11R6/lib/X11/xinit/xinitrc >> ~/.xinitrc                 
-        fi 
+            sed 's/xterm/# xterm/' /usr/X11R6/lib/X11/xinit/xinitrc >> ~/.xinitrc
+        fi
 	# This will start X11 which provides windows system.
 	# which is needed to run ADT/PMV and VISION
 	echo "Starting X11"
@@ -117,7 +117,7 @@ case "`uname -s`" in
 	Darwin*)
 		;;
 esac
- 
+
 # deduce any flags we want to pass to python
 pyflags=""
 for i in "$@"

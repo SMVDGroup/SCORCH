@@ -1,7 +1,7 @@
 #!/bin/csh
 ######
 ## Set some environment variables.
-setenv MGL_ROOT /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6
+setenv MGL_ROOT utils/MGLTools-1.5.6
 
 ########
 ## plaform we run on
@@ -60,4 +60,3 @@ unset PYTHONHOME
 setenv PYTHONHOME $MGL_ROOT
 setenv PYTHONPATH $MGL_ROOT/MGLToolsPckgs
 setenv python $MGL_ROOT/bin/python
-
