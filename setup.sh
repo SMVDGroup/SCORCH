@@ -4,9 +4,9 @@
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         installcommand=$(command -v yum)
 	if [ -z "$installcommand" ]; then
-      		yes | sudo apt-get install libssl-dev
+      		yes | sudo apt-get install libssl-dev python3-pip build-essential manpages-dev
 	else
-      		yes | sudo yum install openssl libssl-dev
+      		yes | sudo yum install openssl libssl-dev python3-pip build-essential manpages-dev
 	fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
         :
