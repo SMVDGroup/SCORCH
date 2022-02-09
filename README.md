@@ -31,10 +31,10 @@ git clone https://github.com/miles-mcgibbon/SCORCH.git
 
 # ensure setup.sh is executable
 cd SCORCH
-chmod 755 setup.sh
+sudo chmod 755 setup.sh
 
 # execute the setup script
-./setup.sh
+sudo ./setup.sh
 ```
 
 # Receptor & Ligand Preparation
