@@ -1,12 +1,10 @@
 name: scorch
 channels:
+- conda-forge
 - rdkit
 - openbabel
-- conda-forge
 - defaults
 dependencies:
-- protobuf=3.14.0
-- rich=10.3.0
 - openbabel=2.4.1
 - rdkit=2018.09.01
 - pip
