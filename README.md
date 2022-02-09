@@ -62,7 +62,16 @@ The scoring function accepts `.pdbqt` receptor and ligand files as inputs. These
 `.sdf` and `.mol2` ligands can be converted to `.pdb` format using `rdkit` in Python:
 
 ```python
+
+# make sure the virtual enviroment is activated
+conda activate scorch
+
+# start a python session
+python
+
+# use rdkit in the python session to convert molecules
 from rdkit import Chem
+import sys
 
 # for mol2 files
 input_mol = Chem.MolFromMol2File("ligand.mol2")
@@ -72,6 +81,9 @@ input_mol = Chem.SDMolSupplier("ligand.sdf")[0]
 
 # save the output as pdb
 Chem.MolToPDBFile(input_mol, "ligand.pdb")
+
+# end the python session
+sys.exit()
 ```
 
 # Usage
