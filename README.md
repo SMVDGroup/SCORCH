@@ -21,7 +21,7 @@ SCORCH uses a variety of descriptors to characterize a docked pose, including [B
 
 # Installation
 
-Installation on linux and mac is achieved via [virtualenv](https://virtualenv.pypa.io/en/latest/). The installation of virtualenv, a local build of Python 3.6.9, scoring function dependencies and scoring function setup is all performed with the supplied setup bash script.
+Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script.
 
 To install SCORCH:
 
@@ -76,10 +76,10 @@ Chem.MolToPDBFile(input_mol, "ligand.pdb")
 
 # Usage
 
-To use the scoring function, the virtual environment needs to be activated first:
+To use the scoring function, the conda environment needs to be activated first:
 
 ```bash
-source .scorch/bin/activate
+conda activate scorch
 ```
 
 The scoring function is supplied as the Python script `scorch.py`. Its main arguments are:
@@ -172,15 +172,15 @@ output = scoring(parsed_parameters)
 
 Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of SCORCH also includes a measure of the prediction certainty.
 
-|Receptor      |Ligand        |SCORCH_score  |SCORCH_certainty|
-|--------------|--------------|--------------|----------------|
-|receptor.pdbqt|ligand_pose_1      |0.83521       |0.75148         |
-|receptor.pdbqt|ligand_pose_2      |0.83781       |0.75926         |
-|receptor.pdbqt|ligand_pose_3      |0.84241       |0.74976         |
-|receptor.pdbqt|ligand_pose_4      |0.77493       |0.65857         |
-|receptor.pdbqt|ligand_pose_5      |0.72339       |0.69700         |
-|receptor.pdbqt|ligand_pose_6      |0.86471       |0.78335         |
-|receptor.pdbqt|ligand_pose_7      |0.81688       |0.69923         |
-|receptor.pdbqt|ligand_pose_8      |0.86669       |0.78808         |
-|receptor.pdbqt|ligand_pose_9      |0.65023       |0.74499         |
-|receptor.pdbqt|ligand_pose_10     |0.07947       |0.86123         |
+|Receptor      |Ligand        |SCORCH_pose_score|SCORCH_certainty|Ligand_ID|SCORCH_score|best_pose|
+|--------------|--------------|-----------------|----------------|---------|------------|---------|
+|receptor.pdbqt|ligand_pose_1 |0.83521          |0.75148         |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_2 |0.83782          |0.75926         |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_3 |0.84241          |0.74976         |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_4 |0.77493          |0.65857         |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_5 |0.72339          |0.697           |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_6 |0.86471          |0.78335         |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_7 |0.81688          |0.69923         |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_8 |0.86669          |0.78808         |ligand   |0.86669     |1        |
+|receptor.pdbqt|ligand_pose_9 |0.65023          |0.74499         |ligand   |0.86669     |0        |
+|receptor.pdbqt|ligand_pose_10|0.07948          |0.86123         |ligand   |0.86669     |0        |
