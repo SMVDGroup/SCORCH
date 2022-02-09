@@ -63,7 +63,7 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 Additional options are explained in the function help.
 
 
-## Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
+## Docking and Scoring SMILES ligands against a receptor
 
 The module includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
 
