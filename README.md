@@ -39,7 +39,7 @@ sudo ./setup.sh
 
 # Usage
 
-### Function options
+## Function options
 
 To use the scoring function, the conda environment needs to be activated first:
 
@@ -49,20 +49,21 @@ conda activate scorch
 
 The scoring function is supplied as the Python script `scorch.py`. Its main arguments are:
 
-|Argument     |Value                                                                                     |Importance                  |
-|-------------|------------------------------------------------------------------------------------------|----------------------------|
+|Argument       |Value                                                                                     |Importance                  |
+|---------------|------------------------------------------------------------------------------------------|----------------------------|
 |`-receptor`    |Filepath to receptor file (pdbqt)                                                       |Essential                   |
 |`-ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                 |Essential                   |
-|`-ref_lig`    |Filepath to example ligand in receptor binding site (pdb or pdbqt)                       |Essential for SMILES ligands|
+|`-center`      |List specifying the center point of the docking search box in the 3D frame of the receptor |Essential for SMILES ligands|
+|`-box_size`    |List specifying the dimensions of the docking search box, in Angstrom                    |Essential for SMILES ligands|    
 |`-out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
 |`-return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
 |`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
-|`-verbose`     |If supplied, progress bars and indicators displayed while scoring                  |Optional (Default False)    |
+|`-verbose`     |If supplied, progress bars and indicators are displayed while scoring                  |Optional (Default False)    |
 
 Additional options are explained in the function help.
 
 
-### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
+## Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
 
 The module includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
 
@@ -70,7 +71,8 @@ The module includes a full pipeline to convert SMILES ligands to `.pdbqt` files 
 python scorch.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/smiles/ligands.smi  \
--ref_lig /home/user/ligands/reference_ligand.pdb \
+-center [4.53, 2.25, -7.28] \
+-box_size [20., 20., 20.] \
 -out scoring_results.csv
 ```
 
@@ -94,12 +96,12 @@ The `-receptor` input is provided as a `.pdbqt` file. This can be prepared from 
 -U nphs
 ```
 
-The docking search space can be specified using the `-box_size` and `-center` arguments. For example, `-center [4.53, 2.25, -7.28] -box_size [20., 20., 20.]`, where the size of the box is specified in Angstrom. Alternatively, you can provide a reference ligand (in `.pdb`, `.pdbqt`, `.mol`, `.mol2` or `.sdf` format) on the target pocket of interest using the `-ref_lig` argument. The coordinates of this ligand will then be padded to define the search box.
+The docking search space can be specified using the `-box_size` and `-center` arguments. Alternatively, you can provide a reference ligand (in `.pdb`, `.pdbqt`, `.mol`, `.mol2` or `.sdf` format) on the target pocket of interest using the `-ref_lig` argument. The coordinates of this ligand will then be padded to define the search box.
 
 Docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. See the function help for additional details.
 
 
-### Scoring already docked ligands
+## Scoring already docked ligands
 
 For scoring a single ligand - `/home/user/ligands/ligand.pdbqt` - on a single receptor - `/home/user/receptors/receptor.pdbqt`:
 
@@ -127,7 +129,7 @@ python scorch.py \
 The `-verbose` flag is used here with the `-out` flag, otherwise the progress indicators will be written to the results file.
 
 
-### Importing SCORCH as a Python module
+## Importing SCORCH as a Python module
 
 The main function from `scorch.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
 
@@ -144,9 +146,9 @@ parsed_parameters = parse_module_args(input_parameters)
 output = scoring(parsed_parameters)
 ```
 
-### Output
+## Output
 
-Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of SCORCH also includes a measure of the prediction certainty.
+Scores are output in `.csv` format. For example, scoring a single ligand `.pdbqt` file with 10 docked poses on a single receptor, using the `-return_pose_scores` flag, yielded the following output. Note that the output of SCORCH includes a measure of the prediction certainty.
 
 |Receptor      |Ligand        |SCORCH_pose_score|SCORCH_certainty|Ligand_ID|SCORCH_score|best_pose|
 |--------------|--------------|-----------------|----------------|---------|------------|---------|
