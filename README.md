@@ -34,7 +34,7 @@ cd SCORCH
 sudo chmod 755 setup.sh
 
 # execute the setup script
-sudo ./setup.sh
+sudo source ./setup.sh
 ```
 
 # Receptor & Ligand Preparation
