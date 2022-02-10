@@ -4,6 +4,7 @@ then
     	mkdir utils/miniconda3
     	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O utils/miniconda3/miniconda.sh
     elif [[ "$OSTYPE" == "darwin"* ]]; then
+	brew install libomp
 	mkdir utils/miniconda3
         curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o utils/miniconda3/miniconda.sh
     bash utils/miniconda3/miniconda.sh -b -u -p utils/miniconda3
