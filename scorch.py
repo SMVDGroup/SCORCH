@@ -656,6 +656,11 @@ def scoring(params):
         else:
             coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
 
+        if not os.path.isdir(os.path.join('utils','temp')):
+            os.makedirs(os.path.join('utils','temp','pdb_files'))
+            os.makedirs(os.path.join('utils','temp','pdbqt_files'))
+            os.makedirs(os.path.join('utils','temp','docked_pdbqt_files'))
+
         pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
         for pdb in pdbs:
             os.remove(pdb)
