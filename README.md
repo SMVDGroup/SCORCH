@@ -44,7 +44,36 @@ sudo source ./setup.sh
 
 # Receptor & Ligand Preparation
 
-The scoring function accepts `.pdbqt` receptor and ligand files as inputs. These should be prepared with [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using the `prepare_receptor4.py` and `prepare_ligand4.py` Python scripts as follows:
+The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Ligands in `sdf`,`mol` or `mol2` format need to be converted to `pdb` format before being scored - this can be done with Python with RDKit:
+
+```python
+
+# make sure the virtual enviroment is activated
+conda activate scorch
+
+# start a python session
+python
+
+# use rdkit in the python session to convert molecules
+from rdkit import Chem
+
+# for mol files
+input_mol = Chem.MolFromMolFile("ligand.mol")
+
+# for mol2 files
+input_mol = Chem.MolFromMol2File("ligand.mol2")
+
+# for sdf files
+input_mol = Chem.SDMolSupplier("ligand.sdf")[0]
+
+# save the output as pdb
+Chem.MolToPDBFile(input_mol, "ligand.pdb")
+
+# end the python session
+exit()
+```
+
+Any `.pdb` receptor and ligand files should be prepared with the supplied [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using `prepare_receptor4.py` and `prepare_ligand4.py` Python scripts as follows:
 
 ```bash
 # preparing a ligand
@@ -64,33 +93,7 @@ The scoring function accepts `.pdbqt` receptor and ligand files as inputs. These
 -U nphs
 ```
 
-`.sdf` and `.mol2` ligands can be converted to `.pdb` format using `rdkit` in Python:
-
-```python
-
-# make sure the virtual enviroment is activated
-conda activate scorch
-
-# start a python session
-python
-
-# use rdkit in the python session to convert molecules
-from rdkit import Chem
-
-# for mol2 files
-input_mol = Chem.MolFromMol2File("ligand.mol2")
-
-# for sdf files
-input_mol = Chem.SDMolSupplier("ligand.sdf")[0]
-
-# save the output as pdb
-Chem.MolToPDBFile(input_mol, "ligand.pdb")
-
-# end the python session
-exit()
-```
-
-The `.pdb` ligands can then be converted to `.pdbqt` as described above.
+SMILES ligands need no preprocessing.
 
 # Usage
 
@@ -112,11 +115,43 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 |`-out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
 |`-return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
 |`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
-|`-verbose`     |If supplied, progress bars and indicators displayed while scoring                  |Optional (Default False)    |
+|`-verbose`     |If supplied, progress bars and indicators are displayed while scoring                  |Optional (Default False)    |
 
-Additional options are explained in the function help.
 
-### Scoring a Single PDBQT Ligand Against a Single PDBQT Receptor
+### Docking and Scoring SMILES Ligands Against a Receptor
+
+SCORCH includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
+
+```bash
+python scorch.py \
+-receptor /home/user/receptors/receptor.pdbqt \
+-ligand /home/user/smiles/ligands.smi  \
+-ref_lig /home/user/ligands/reference_ligand.pdb \
+-out influenza_results.csv
+```
+
+The binding site for docking can be defined with a reference ligand as above with `-ref_lig`, or by supplying `-center` and `-range` values in the same way as for molecular docking software:
+
+```bash
+python scorch.py \
+-receptor /home/user/receptors/receptor.pdbqt \
+-ligand /home/user/smiles/ligands.smi  \
+-center [14 19 -24] \
+-range [14 14 14] \
+-out influenza_results.csv
+```
+
+The `-ligand` input should be supplied as `.smi`  or `.txt` file, with one SMILES ligand and an optional identifier per line, as in this example:
+
+```bash
+CCC(CC)O[C@@H]1C=C(C[C@H]([C@H]1NC(=O)C)O)C(=O)OCC 49817880
+CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)[NH3+])C(=O)OCC 24848267
+CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)N)C(=O)NOC 118722031
+```
+
+Docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. See the function help for additional details.
+
+### Scoring Already Docked Ligands Against a Receptor
 
 For scoring a single ligand - `/home/user/ligands/ligand.pdbqt` - against a single receptor - `/home/user/receptors/receptor.pdbqt`:
 
@@ -125,8 +160,6 @@ python scorch.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/ligands/ligand.pdbqt
 ```
-
-### Scoring Multiple PDBQT Ligands Against a Single PDBQT Receptor
 
 For scoring all `.pdbqt` ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
 
@@ -145,41 +178,6 @@ python scorch.py \
 
 The `-verbose` flag is here used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file.
 
-
-### Docking and Scoring Multiple SMILES Ligands Against a Single PDBQT Receptor
-
-
-The module also includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
-
-```bash
-python scorch.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/smiles/ligands.smi  \
--ref_lig /home/user/ligands/reference_ligand.pdb \
--out influenza_results.csv
-```
-
-The binding site for docking can be defined with a reference ligand as above with `-ref_lig`, or by supplying `-center` and `-range` values in the same way as for molecular docking software:
-
-```bash
-python scorch.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/smiles/ligands.smi  \
--center [14 19 24] \
--range [14 14 14] \
--out influenza_results.csv
-```
-
-
-The `-ligand` input should be supplied as `.smi`  or text file, with one SMILES ligand and an optional identifier per line, as in this example:
-
-```bash
-CCC(CC)O[C@@H]1C=C(C[C@H]([C@H]1NC(=O)C)O)C(=O)OCC 49817880
-CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)[NH3+])C(=O)OCC 24848267
-CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)N)C(=O)NOC 118722031
-```
-
-Docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. See the function help for additional details.
 
 ### Importing SCORCH as a Python module
 
