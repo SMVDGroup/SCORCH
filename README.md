@@ -21,7 +21,7 @@ SCORCH uses a variety of descriptors to characterize a docked pose, including [B
 
 # Installation
 
-Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script.
+Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script. This is run slightly differently on linux vs mac:
 
 To install SCORCH:
 
@@ -33,7 +33,10 @@ git clone https://github.com/miles-mcgibbon/SCORCH.git
 cd SCORCH
 sudo chmod 755 setup.sh
 
-# execute the setup script
+# MAC USERS RUN
+sudo ./setup.sh
+
+# LINUX USERS RUN
 sudo source ./setup.sh
 ```
 
@@ -100,7 +103,9 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 |-------------|------------------------------------------------------------------------------------------|----------------------------|
 |`-receptor`    |Filepath to receptor file (pdbqt)                                                       |Essential                   |
 |`-ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                 |Essential                   |
-|`-ref_lig`    |Filepath to example ligand in receptor binding site (pdb or pdbqt)                       |Essential for SMILES ligands|
+|`-ref_lig`    |Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)       |Essential for SMILES ligands (unless `-center` and `-range` supplied)|
+|`-center`     | [x y z] coordinates of the center of the binding site for docking                       |Essential for SMILES ligands (unless `-ref_lig` supplied)|
+|`-range`     | [x y z] axis lengths to define a box around `-center` coordinates for docking            |Essential for SMILES ligands (unless `-ref_lig` supplied)|
 |`-out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
 |`-return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
 |`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
@@ -151,6 +156,18 @@ python scorch.py \
 -out influenza_results.csv
 ```
 
+The binding site for docking can be defined with a reference ligand as above with `-ref_lig`, or by supplying `-center` and `-range` values in the same way as for molecular docking software:
+
+```bash
+python scorch.py \
+-receptor /home/user/receptors/receptor.pdbqt \
+-ligand /home/user/smiles/ligands.smi  \
+-center [14 19 24] \
+-range [14 14 14] \
+-out influenza_results.csv
+```
+
+
 The `-ligand` input should be supplied as `.smi`  or text file, with one SMILES ligand and an optional identifier per line, as in this example:
 
 ```bash
@@ -158,8 +175,6 @@ CCC(CC)O[C@@H]1C=C(C[C@H]([C@H]1NC(=O)C)O)C(=O)OCC 49817880
 CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)[NH3+])C(=O)OCC 24848267
 CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)N)C(=O)NOC 118722031
 ```
-
-You also need to supply a `.pdb` or `.pdbqt` ligand on the active site of the protein receptor that you are screening using the `-ref_lig` argument. This is used to define the docking search space.
 
 Docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. See the function help for additional details.
 
