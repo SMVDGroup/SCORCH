@@ -18,4 +18,6 @@ then
 fi
 conda config --set channel_priority strict
 conda env create -f scorch.yml python=3.6.9
+conda init bash
+conda init zsh
 conda activate scorch

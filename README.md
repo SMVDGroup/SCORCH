@@ -21,6 +21,8 @@ SCORCH uses a variety of descriptors to characterize a docked pose, including [B
 
 # Installation
 
+### **Currently SCORCH is only compatible with OS X and Linux**
+
 Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script. This is run slightly differently on linux vs mac:
 
 To install SCORCH:
@@ -74,7 +76,6 @@ python
 
 # use rdkit in the python session to convert molecules
 from rdkit import Chem
-import sys
 
 # for mol2 files
 input_mol = Chem.MolFromMol2File("ligand.mol2")
@@ -86,7 +87,7 @@ input_mol = Chem.SDMolSupplier("ligand.sdf")[0]
 Chem.MolToPDBFile(input_mol, "ligand.pdb")
 
 # end the python session
-sys.exit()
+exit()
 ```
 
 The `.pdb` ligands can then be converted to `.pdbqt` as described above.
