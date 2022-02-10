@@ -44,7 +44,7 @@ sudo source ./setup.sh
 
 # Receptor & Ligand Preparation
 
-The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Ligands in `sdf`,`mol` or `mol2` format need to be converted to `pdb` format before being scored - this can be done with Python with RDKit:
+The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Ligands in `sdf`,`mol` or `mol2` format need to be converted to `pdb` format before being scored - this can be done in Python with RDKit:
 
 ```python
 
@@ -198,7 +198,7 @@ output = scoring(parsed_parameters)
 
 # Output
 
-Scores are output in `.csv` format. For example, scoring a single ligand pdbqt containing 10 docked poses against a single receptor file would yield the following output. Note that the output of SCORCH also includes a measure of the prediction certainty.
+Scores are output in `.csv` format. For example, scoring a single ligand `.pdbqt` file with 10 docked poses on a single receptor, using the `-return_pose_scores` flag, yielded the following output. Note that the output of SCORCH includes a measure of the prediction certainty.
 
 |Receptor      |Ligand        |SCORCH_pose_score|SCORCH_certainty|Ligand_ID|SCORCH_score|best_pose|
 |--------------|--------------|-----------------|----------------|---------|------------|---------|
