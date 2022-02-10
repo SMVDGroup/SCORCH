@@ -89,6 +89,8 @@ Chem.MolToPDBFile(input_mol, "ligand.pdb")
 sys.exit()
 ```
 
+The `.pdb` ligands can then be converted to `.pdbqt` as described above.
+
 # Usage
 
 To use the scoring function, the conda environment needs to be activated first:
