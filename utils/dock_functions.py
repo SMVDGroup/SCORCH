@@ -15,7 +15,6 @@ import logging
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from io import StringIO
 from rdkit import RDLogger
 import sys
 import subprocess
