@@ -376,6 +376,14 @@ def parse_args(args):
         except:
             params['ref_lig'] = None
         try:
+            params['center'] = args[args.index('-center') + 1:args.index('-center') + 4]
+        except:
+            params['center'] = None
+        try:
+            params['range'] = args[args.index('-range') + 1:args.index('-range') + 4]
+        except:
+            params['range'] = None
+        try:
             params['out'] = args[args.index('-out') + 1]
         except:
             params['out'] = False
@@ -413,7 +421,6 @@ def parse_args(args):
 
         elif '.smi' in params['ligand'] or '.txt' in params['ligand']:
             params['dock'] = True
-
 
         else:
             params['ligand'] = [params['ligand']]
@@ -548,9 +555,10 @@ def print_intro(params):
 
     logging.info('**************************************************************************\n')
 
-    logging.info(f'Parsed {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
+    if not params['dock']:
+        logging.info(f'Parsed {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
 
-    if params['dock']:
+    else:
         ligand_count = len(open(params["ligand"]).read().split("\n"))
         logging.info(f'Parsed {ligand_count} ligand smiles for docking and scoring against a single receptor...\n')
 
@@ -628,76 +636,89 @@ def scoring(params):
     params['binana_params'] = ['-receptor', binana_receptor, '-ligand', binana_ligand]
 
     if params['dock']:
+
+        dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
+
         if params['ref_lig'] is None:
-            print('ERROR - No reference ligand supplied')
-            sys.exit()
-        else:
-            dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
-
-            pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
-            for pdb in pdbs:
-                os.remove(pdb)
-
-            pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
-            for pdbqt in pdbqts:
-                os.remove(pdbqt)
-
-            docked_pdbqts = get_filepaths(os.path.join('utils','temp','docked_pdbqt_files',''))
-            for docked_pdbqt in docked_pdbqts:
-                os.remove(docked_pdbqt)
-
-            coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
-            smi_dict = get_smiles(params['ligand'])
-
-            multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
-
-            pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
-            logging.info('Converting pdbs to pdbqts...')
-            merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
-
-            multiprocess_wrapper(autodock_convert, merged_pdb_args.items(), params['threads'])
-
-            pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
-
-            if platform.lower() == 'darwin':
-                os_name = 'mac'
-            elif 'linux' in platform.lower():
-                os_name = 'linux'
-
-            logging.info("Docking pdbqt ligands...")
-            for pdbqt in tqdm(pdbqts):
-                dock_file(
-                          os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
-                          params['receptor'],
-                          pdbqt,
-                          *coords,
-                          dock_settings['gwovina_settings']['exhaustiveness'],
-                          dock_settings['gwovina_settings']['num_wolves'],
-                          dock_settings['gwovina_settings']['num_modes'],
-                          dock_settings['gwovina_settings']['energy_range'],
-                          outfile=os.path.join(f'{stem_path}','utils','temp','docked_pdbqt_files',f'{os.path.split(pdbqt)[1]}')
-                          )
-
-
-            if '.' in params['ligand']:
-                docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
+            if params['center'] is None and params['range'] is None:
+                logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- suppling a reference ligand")
             else:
-                docked_ligands_folder = os.path.basename(params['ligand'])
+                try:
+                    coords = (float(params['center'][0].strip('[')),
+                              float(params['center'][1]),
+                              float(params['center'][2].strip(']')),
+                              float(params['range'][0].strip('[')),
+                              float(params['range'][1]),
+                              float(params['range'][2].strip(']')))
+                except:
+                    logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
+                    sys.exit()
+        else:
+            coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
 
-            docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
+        pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
+        for pdb in pdbs:
+            os.remove(pdb)
+
+        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+        for pdbqt in pdbqts:
+            os.remove(pdbqt)
+
+        docked_pdbqts = get_filepaths(os.path.join('utils','temp','docked_pdbqt_files',''))
+        for docked_pdbqt in docked_pdbqts:
+            os.remove(docked_pdbqt)
+
+        smi_dict = get_smiles(params['ligand'])
+
+        multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
+
+        pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
+        logging.info('Converting pdbs to pdbqts...')
+        merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
+
+        multiprocess_wrapper(autodock_convert, merged_pdb_args.items(), params['threads'])
+
+        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+
+        if platform.lower() == 'darwin':
+            os_name = 'mac'
+        elif 'linux' in platform.lower():
+            os_name = 'linux'
+
+        logging.info("Docking pdbqt ligands...")
+        for pdbqt in tqdm(pdbqts):
+            dock_file(
+                      os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
+                      params['receptor'],
+                      pdbqt,
+                      *coords,
+                      dock_settings['gwovina_settings']['exhaustiveness'],
+                      dock_settings['gwovina_settings']['num_wolves'],
+                      dock_settings['gwovina_settings']['num_modes'],
+                      dock_settings['gwovina_settings']['energy_range'],
+                      outfile=os.path.join(f'{stem_path}','utils','temp','docked_pdbqt_files',f'{os.path.split(pdbqt)[1]}')
+                      )
 
 
-            params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
-            receptors = [params['receptor'] for i in range(len(params['ligand']))]
-            params['receptor'] = receptors
+        if '.' in params['ligand']:
+            docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
+        else:
+            docked_ligands_folder = os.path.basename(params['ligand'])
 
-            if not os.path.isdir('docked_ligands'):
-                os.mkdir('docked_ligands')
-            if not os.path.isdir(docked_ligands_path):
-                os.makedirs(docked_ligands_path)
+        docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
 
-            for file in params['ligand']:
-                shutil.copy(file, docked_ligands_path)
+
+        params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
+        receptors = [params['receptor'] for i in range(len(params['ligand']))]
+        params['receptor'] = receptors
+
+        if not os.path.isdir('docked_ligands'):
+            os.mkdir('docked_ligands')
+        if not os.path.isdir(docked_ligands_path):
+            os.makedirs(docked_ligands_path)
+
+        for file in params['ligand']:
+            shutil.copy(file, docked_ligands_path)
 
 
     poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))

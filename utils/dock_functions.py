@@ -11,10 +11,16 @@
 
 import os
 from biopandas.pdb import PandasPdb
+import logging
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import AllChem
+from io import StringIO
+from rdkit import RDLogger
+import sys
 import subprocess
+
+RDLogger.DisableLog('rdApp.*')
 
 stem_path = os.getcwd()
 
@@ -42,10 +48,43 @@ def get_smiles(smi_datafile):
 
     return smi_dict
 
+def convert_to_rdmol(file, file_extension, sanitize_bool):
+
+    if file_extension == 'mol':
+        ref_lig = Chem.MolFromMolFile(file, sanitize=sanitize_bool, strictParsing=sanitize_bool)
+    elif file_extension == 'mol2':
+        ref_lig = Chem.MolFromMol2File(file, sanitize=sanitize_bool, cleanupSubstructures=sanitize_bool)
+    elif 'sdf' in file_extension:
+        ref_lig = Chem.SDMolSupplier(file, sanitize=sanitize_bool)[0]
+
+    return ref_lig
+
+
 def get_coordinates(file, padding): # find the center x, y, z coordinates of the active crystal ligand and construct a binding site cuboid around this center point
 
-    # read the pdb file as a dataframe
-    pmol = PandasPdb().read_pdb(file)
+    file_extension = file.split('.')[-1].strip().lstrip()
+
+    if 'pdb' in file_extension:
+        pmol = PandasPdb().read_pdb(file)
+
+    else:
+        ref_lig = convert_to_rdmol(file, True)
+
+        if ref_lig is None:
+            ref_lig = convert_to_rdmol(file, False)
+
+        try:
+            pdb_block = Chem.MolToPDBBlock(ref_lig)
+        except:
+            logging.critical(f"""\nERROR: Could not parse supplied reference ligand '{file}'. Try:\n- supplying coordinates\n- converting this molecule to a pdb file\n- suppling a different reference ligand\n- making sure any mol2 files are Corina produced, not Tripos""")
+            sys.exit()
+
+        # read the pdb file as a dataframe
+        pmol = PandasPdb()
+
+        pmol.pdb_text = pdb_block
+
+        pmol._df = pmol._construct_df(pdb_lines=pmol.pdb_text.splitlines(True))
 
     # combine atoms and hetatm coordinates into one master dataframe
     atom_df = pmol.df['ATOM']
