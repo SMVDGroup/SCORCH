@@ -41,18 +41,9 @@ sudo chmod 755 setup.sh
 
 # Receptor & Ligand Preparation
 
-The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Ligands in `sdf`,`mol` or `mol2` format need to be converted to `pdb` format before being scored - this can be done with third party software such as [openbabel](http://openbabel.org/wiki/Main_Page)
-
-Any `.pdb` receptor and ligand files should be prepared with the supplied [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using `prepare_receptor4.py` and `prepare_ligand4.py` Python scripts as follows:
+The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Any `.pdb` receptor files should be prepared with the supplied [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using `prepare_receptor4.py` Python script as follows:
 
 ```bash
-# preparing a ligand
-./utils/MGLTools-1.5.6/bin/pythonsh \
-./utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py \
--l path/to/ligand.pdb \
--A hydrogens \
--o path/to/save/ligand.pdbqt
--U nphs
 
 # preparing a receptor
 ./utils/MGLTools-1.5.6/bin/pythonsh \
@@ -63,7 +54,7 @@ Any `.pdb` receptor and ligand files should be prepared with the supplied [MGLTo
 -U nphs
 ```
 
-SMILES ligands need no preprocessing.
+SMILES ligands need no preprocessing. For pre-docked `.pdbqt` ligands, we recommend only scoring docking results in `.pdbqt` format (ideally from AutoDock or GWOVina). Scoring results from other docking software might be possible if converted to `.pdbqt`.
 
 # Usage
 
@@ -97,7 +88,7 @@ python scorch.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/smiles/ligands.smi  \
 -ref_lig /home/user/ligands/reference_ligand.pdb \
--out influenza_results.csv
+-out scoring_results.csv
 ```
 
 The binding site for docking can be defined with a reference ligand as above with `-ref_lig`, or by supplying `-center` and `-range` values in the same way as for molecular docking software:
@@ -108,7 +99,7 @@ python scorch.py \
 -ligand /home/user/smiles/ligands.smi  \
 -center '[14, 19, -24]' \
 -range '[14, 14, 14]' \
--out influenza_results.csv
+-out scoring_results.csv
 ```
 
 The `-ligand` input should be supplied as `.smi`  or `.txt` file, with one SMILES ligand and an optional identifier per line, as in this example:
