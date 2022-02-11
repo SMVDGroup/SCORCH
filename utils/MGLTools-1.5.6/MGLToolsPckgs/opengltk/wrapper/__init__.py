@@ -1,4 +1,0 @@
-#
-# copyright_notice
-#
-
