@@ -146,9 +146,6 @@ python scorch.py \
 -verbose
 ```
 
-The `-verbose` flag is here used in conjunction with the `-out` flag, otherwise the progress indicators will be written to the results file.
-
-
 ### Importing SCORCH as a Python module
 
 The main function from `scorch.py` can be imported and used in other Python scripts. It takes a dictionary of parameters as inputs and returns a pandas dataframe of model scores identical to the normal scoring function output:
