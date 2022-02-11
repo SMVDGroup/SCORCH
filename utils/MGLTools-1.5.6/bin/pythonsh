@@ -6,7 +6,7 @@
 
 ######
 ## Set some environment variable.
-MGL_ROOT="utils/MGLTools-1.5.6" 
+MGL_ROOT="/home/milesm/Publications/XGBScore/SCORCH/utils/MGLTools-1.5.6" 
 export MGL_ROOT
 
 ########

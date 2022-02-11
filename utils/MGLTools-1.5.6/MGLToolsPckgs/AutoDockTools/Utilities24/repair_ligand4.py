@@ -1,5 +1,5 @@
 
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 
 import os
 from string import find

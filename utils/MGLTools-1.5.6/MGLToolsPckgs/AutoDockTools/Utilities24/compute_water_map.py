@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 #
 # Combine OA and HD maps for providing the W map
 # for water molecules affinity

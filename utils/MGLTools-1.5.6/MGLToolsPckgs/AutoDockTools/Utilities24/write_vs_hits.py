@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 #
 # $Id: write_vs_hits.py,v 1.1 2009/01/09 20:40:32 rhuey Exp $
 #

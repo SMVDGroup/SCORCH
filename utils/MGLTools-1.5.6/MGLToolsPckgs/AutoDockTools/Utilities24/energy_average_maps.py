@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 # $Header: /opt/cvs/python/packages/share1.5/AutoDockTools/Utilities24/energy_average_maps.py,v 1.4 2009/03/23 16:40:44 rhuey Exp $
 import glob, math
 

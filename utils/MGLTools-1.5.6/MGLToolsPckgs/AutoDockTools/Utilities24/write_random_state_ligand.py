@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 #$Id: write_random_state_ligand.py,v 1.3 2008/03/04 17:58:57 rhuey Exp $
 import os
 import random

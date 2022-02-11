@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 #$Id: rotate_molecule.py,v 1.2 2007/10/08 18:13:30 rhuey Exp $
 import os 
 from MolKit import Read

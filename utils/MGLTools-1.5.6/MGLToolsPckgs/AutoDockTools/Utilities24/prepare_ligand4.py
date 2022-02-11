@@ -1,4 +1,4 @@
-#!/usr/bin/env utils/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 #
 # 
 #

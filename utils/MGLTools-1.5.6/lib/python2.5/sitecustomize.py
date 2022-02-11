@@ -1,4 +1,4 @@
-mglroot = '/home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6'
+mglroot = '/home/milesm/Publications/XGBScore/SCORCH/utils/MGLTools-1.5.6'
 # specify mglroot here
 import sys, os
 path = os.path.join(mglroot, "MGLToolsPckgs")

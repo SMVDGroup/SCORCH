@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 #
 # $Id: summarize_docking_directory.py,v 1.5 2007/10/09 17:30:07 annao Exp $
 #

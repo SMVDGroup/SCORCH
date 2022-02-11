@@ -1,4 +1,4 @@
-#!/usr/bin/env /home/milesm/Other/Dissertation/Third_Party_Code/MGLTools-1.5.6/bin/pythonsh
+#!/usr/bin/env python
 # $Id: superimpose_based_on_subset.py,v 1.2 2007/12/04 15:03:24 rhuey Exp $
 
 #---------------------------------------------------------------------------#
