@@ -4,11 +4,13 @@ if ! command -v conda &> /dev/null
 then
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     	sudo mkdir utils/miniconda3
+      PLATFORM='linux'
     	sudo wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O utils/miniconda3/miniconda.sh
     elif [[ "$OSTYPE" == "darwin"* ]]; then
 	    brew install libomp
 	    sudo mkdir utils/miniconda3
       sudo curl https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -o utils/miniconda3/miniconda.sh
+      PLATFORM='mac'
     fi
     echo "bash utils etc..."
     sudo bash utils/miniconda3/miniconda.sh -b -u -p utils/miniconda3
@@ -29,3 +31,8 @@ conda config --set channel_priority strict
 sudo chown -R $USER $CONDA_BASE
 sudo chown -R $USER ~/.conda
 conda env create -f scorch.yml python=3.6.9
+
+# setup GWOVina
+tar -xzvf utils/gwovina-1.0.tar.gz
+cd utils/gwovina-1.0/$PLATFORM/release && sudo make
+cd --
