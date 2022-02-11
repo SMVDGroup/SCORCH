@@ -291,7 +291,7 @@ def binary_concat(dfs, headers):
     total_rows = 0
     if not os.path.isdir(os.path.join('utils','temp')):
         os.makedirs(os.path.join('utils','temp'))
-        
+
     with open(os.path.join('utils','temp','features.bin'),'wb+') as binary_store:
         for df in dfs:
             df['nRot'] = pd.to_numeric(df['nRot'])
@@ -659,7 +659,7 @@ def scoring(params):
         else:
             coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
 
-        if not os.path.isdir(os.path.join('utils','temp')):
+        if not os.path.isdir(os.path.join('utils','temp','pdb_files')):
             os.makedirs(os.path.join('utils','temp','pdb_files'))
             os.makedirs(os.path.join('utils','temp','pdbqt_files'))
             os.makedirs(os.path.join('utils','temp','docked_pdbqt_files'))
