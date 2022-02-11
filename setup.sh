@@ -1,5 +1,7 @@
 #!/bin/bash
 
+BASEDIR=$PWD
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
     brew install libomp
 fi
@@ -44,9 +46,9 @@ cd utils && tar -xzvf gwovina-1.0.tar.gz
 cd gwovina-1.0/build/$PLATFORM/release
 echo "Building GWOVina 1.0"
 sudo make -j2
-cd --
+cd $BASEDIR
 
-echo -e "\nSCORCH setup complete!"
+cd $BASEDIR
 
 # build MGLTools
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -64,3 +66,5 @@ cd utils && tar -xzvf mgltools1-5-6.tar.gz
 mv $MGLFOLDER MGLTools-1.5.6
 
 cd MGLTools-1.5.6 && sudo ./install.sh
+
+echo -e "\nSCORCH setup complete!"
