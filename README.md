@@ -35,11 +35,8 @@ git clone https://github.com/miles-mcgibbon/SCORCH.git
 cd SCORCH
 sudo chmod 755 setup.sh
 
-# MAC USERS RUN
-sudo ./setup.sh
-
-# LINUX USERS RUN
-sudo source ./setup.sh
+# execute the setup script
+./setup.sh
 ```
 
 # Receptor & Ligand Preparation
