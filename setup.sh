@@ -27,4 +27,5 @@ source $CONDA_SH
 $CONDA_PATH config --set auto_activate_base false
 conda config --set channel_priority strict
 sudo chown -R $USER $CONDA_BASE
+sudo chown -R $USER ~/.conda
 conda env create -f scorch.yml python=3.6.9
