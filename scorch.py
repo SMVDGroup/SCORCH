@@ -644,7 +644,8 @@ def scoring(params):
 
         if params['ref_lig'] is None:
             if params['center'] is None and params['range'] is None:
-                logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- suppling a reference ligand")
+                logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- supplying a reference ligand")
+                sys.exit()
             else:
                 try:
                     coords = (float(params['center'][0].strip('[')),
