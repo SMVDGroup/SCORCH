@@ -69,14 +69,14 @@ def run_binana(params, lig, rec):
     ###########################################
 
     if params.okay_to_proceed() == False:
-        print(
+        logging.critical(
             "Error: You need to specify the ligand and receptor PDBQT files to analyze using\nthe -receptor and -ligand tags from the command line.\n"
         )
         sys.exit(0)
 
     if params.error != "":
-        print("Warning: The following command-line parameters were not recognized:")
-        print(("   " + cmd_params.error + "\n"))
+        logging.warning("Warning: The following command-line parameters were not recognized:")
+        logging.warning(("   " + cmd_params.error + "\n"))
 
     output = binana.Binana(lig, rec, params).out
 
@@ -333,8 +333,6 @@ def parse_module_args(args_dict):
 
     parsed_args = parse_args(command_input)
 
-    print(parsed_args)
-
     return parsed_args
 
 def parse_args(args):
@@ -360,11 +358,11 @@ def parse_args(args):
             help = help_string.read()
             for line in help.split('\n'):
                 if line.isupper():
-                    print(line)
+                    logging.info(line)
                 elif  '-' in line:
-                    print(line)
+                    logging.info(line)
                 else:
-                    print(wrapper.fill(line))
+                    logging.info(wrapper.fill(line))
         sys.exit()
 
     try:
@@ -379,11 +377,11 @@ def parse_args(args):
         except:
             params['ref_lig'] = None
         try:
-            params['center'] = args[args.index('-center') + 1:args.index('-center') + 4]
+            params['center'] = json.loads(args[args.index('-center') + 1])
         except:
             params['center'] = None
         try:
-            params['range'] = args[args.index('-range') + 1:args.index('-range') + 4]
+            params['range'] = json.loads(args[args.index('-range') + 1])
         except:
             params['range'] = None
         try:
@@ -437,8 +435,8 @@ def parse_args(args):
     except ValueError as e:
         if 'is not in list' in str(e):
             missing = str(e).replace("'",'').replace(' is not in list','')
-            print(f'Error: essential argument {missing} not supplied')
-            print('Run "python scoring.py -h" for usage instructions')
+            logging.critical(f'Error: essential argument {missing} not supplied')
+            logging.critical('Run "python scoring.py -h" for usage instructions')
             sys.exit()
 
 
@@ -648,12 +646,12 @@ def scoring(params):
                 sys.exit()
             else:
                 try:
-                    coords = (float(params['center'][0].strip('[')),
+                    coords = (float(params['center'][0]),
                               float(params['center'][1]),
-                              float(params['center'][2].strip(']')),
-                              float(params['range'][0].strip('[')),
+                              float(params['center'][2]),
+                              float(params['range'][0]),
                               float(params['range'][1]),
-                              float(params['range'][2].strip(']')))
+                              float(params['range'][2]))
                 except:
                     logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
                     sys.exit()

@@ -80,8 +80,8 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 |`-receptor`    |Filepath to receptor file (pdbqt)                                                       |Essential                   |
 |`-ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                 |Essential                   |
 |`-ref_lig`    |Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)       |Essential for SMILES ligands (unless `-center` and `-range` supplied)|
-|`-center`     | [x y z] coordinates of the center of the binding site for docking                       |Essential for SMILES ligands (unless `-ref_lig` supplied)|
-|`-range`     | [x y z] axis lengths to define a box around `-center` coordinates for docking            |Essential for SMILES ligands (unless `-ref_lig` supplied)|
+|`-center`     | '[x, y, z]' coordinates of the center of the binding site for docking                       |Essential for SMILES ligands (unless `-ref_lig` supplied)|
+|`-range`     | '[x, y, z]' axis lengths to define a box around `-center` coordinates for docking            |Essential for SMILES ligands (unless `-ref_lig` supplied)|
 |`-out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
 |`-return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
 |`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
@@ -106,8 +106,8 @@ The binding site for docking can be defined with a reference ligand as above wit
 python scorch.py \
 -receptor /home/user/receptors/receptor.pdbqt \
 -ligand /home/user/smiles/ligands.smi  \
--center [14 19 -24] \
--range [14 14 14] \
+-center '[14, 19, -24]' \
+-range '[14, 14, 14]' \
 -out influenza_results.csv
 ```
 
