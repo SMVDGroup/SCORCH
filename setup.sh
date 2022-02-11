@@ -42,6 +42,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     PLATFORM="mac"
 fi
+echo -e $PLATFORM
 cd utils && tar -xzvf gwovina-1.0.tar.gz
 cd gwovina-1.0/build/$PLATFORM/release
 echo "Building GWOVina 1.0"
