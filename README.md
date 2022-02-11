@@ -44,34 +44,7 @@ sudo source ./setup.sh
 
 # Receptor & Ligand Preparation
 
-The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Ligands in `sdf`,`mol` or `mol2` format need to be converted to `pdb` format before being scored - this can be done in Python with RDKit:
-
-```python
-
-# make sure the virtual enviroment is activated
-conda activate scorch
-
-# start a python session
-python
-
-# use rdkit in the python session to convert molecules
-from rdkit import Chem
-
-# for mol files
-input_mol = Chem.MolFromMolFile("ligand.mol")
-
-# for mol2 files
-input_mol = Chem.MolFromMol2File("ligand.mol2")
-
-# for sdf files
-input_mol = Chem.SDMolSupplier("ligand.sdf")[0]
-
-# save the output as pdb
-Chem.MolToPDBFile(input_mol, "ligand.pdb")
-
-# end the python session
-exit()
-```
+The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Ligands in `sdf`,`mol` or `mol2` format need to be converted to `pdb` format before being scored - this can be done with third party software such as [openbabel](http://openbabel.org/wiki/Main_Page)
 
 Any `.pdb` receptor and ligand files should be prepared with the supplied [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using `prepare_receptor4.py` and `prepare_ligand4.py` Python scripts as follows:
 
