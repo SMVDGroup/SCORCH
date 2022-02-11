@@ -42,3 +42,5 @@ cd gwovina-1.0/build/$PLATFORM/release
 echo "Building GWOVina 1.0"
 sudo make -j2
 cd --
+
+echo -e "\nSCORCH setup complete!"
