@@ -289,7 +289,10 @@ def binary_concat(dfs, headers):
     ###########################################
 
     total_rows = 0
-    with open(os.path.join('utils','temp','features.bin'),'wb') as binary_store:
+    if not os.path.isdir(os.path.join('utils','temp')):
+        os.makedirs(os.path.join('utils','temp'))
+        
+    with open(os.path.join('utils','temp','features.bin'),'wb+') as binary_store:
         for df in dfs:
             df['nRot'] = pd.to_numeric(df['nRot'])
             rows, fixed_total_columns = df.shape
