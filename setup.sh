@@ -1,5 +1,5 @@
 #!/bin/bash
-source ~/.bashrc
+
 if ! command -v conda &> /dev/null
 then
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -21,8 +21,10 @@ else
     CONDA_BASE=$(conda info --base)
     CONDA_SH=$CONDA_BASE/etc/profile.d/conda.sh
 fi
-sudo $CONDA_PATH init bash
+source ~/.bashrc
+$CONDA_PATH init bash
 source $CONDA_SH
 $CONDA_PATH config --set auto_activate_base false
 conda config --set channel_priority strict
-sudo conda env create -f scorch.yml python=3.6.9
+sudo chown -R $USER $CONDA_BASE
+conda env create -f scorch.yml python=3.6.9
