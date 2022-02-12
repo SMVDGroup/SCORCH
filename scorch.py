@@ -358,11 +358,11 @@ def parse_args(args):
             help = help_string.read()
             for line in help.split('\n'):
                 if line.isupper():
-                    logging.info(line)
+                    print(line)
                 elif  '-' in line:
-                    logging.info(line)
+                    print(line)
                 else:
-                    logging.info(wrapper.fill(line))
+                    print(wrapper.fill(line))
         sys.exit()
 
     try:

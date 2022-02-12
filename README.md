@@ -21,7 +21,7 @@ SCORCH uses a variety of descriptors to characterize a docked pose, including [B
 
 # Installation
 
-### **Currently SCORCH is only compatible with OS X and Linux**
+### **Currently SCORCH is only compatible with OS X and Linux; Docking and Scoring SMILES is only available on Linux systems**
 
 Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script. This is run slightly differently on linux vs mac:
 
@@ -54,7 +54,9 @@ The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` liga
 -U nphs
 ```
 
-SMILES ligands need no preprocessing. For pre-docked `.pdbqt` ligands, we recommend only scoring docking results in `.pdbqt` format (ideally from AutoDock or GWOVina). Scoring results from other docking software might be possible if converted to `.pdbqt`.
+SMILES ligands need no preprocessing; Problematic input SMILES are standardised using [Gypsum-DL](https://durrantlab.pitt.edu/gypsum-dl/), a useful and robust tool for creating 3D SDF and PDB files from SMILES inputs. **Gypsum-DL was not used to prepare training data, so if large amounts of your SMILES inputs are needing standardising there is a chance it may impact performance**.
+
+For pre-docked `.pdbqt` ligands, we recommend only scoring docking results in `.pdbqt` format (ideally from AutoDock or GWOVina). Scoring results from other docking software might be possible if converted to `.pdbqt`.
 
 # Usage
 
@@ -78,8 +80,9 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 |`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
 |`-verbose`     |If supplied, progress bars and indicators are displayed while scoring                  |Optional (Default False)    |
 
+For further details on arguments, run `python scorch.py -h`.
 
-### Docking and Scoring SMILES Ligands Against a Receptor
+### Docking and Scoring SMILES Ligands Against a Receptor (**Linux Only**)
 
 SCORCH includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
 
@@ -112,7 +115,7 @@ CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)N)C(=O)NOC 118722031
 
 Docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. See the function help for additional details.
 
-### Scoring Already Docked Ligands Against a Receptor
+### Scoring Already Docked Ligands Against a Receptor (**Linux & Mac**)
 
 For scoring a single ligand - `/home/user/ligands/ligand.pdbqt` - against a single receptor - `/home/user/receptors/receptor.pdbqt`:
 
