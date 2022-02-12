@@ -403,7 +403,7 @@ def parse_args(args):
         else:
             params['verbose'] = False
             tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
-            logging.basicConfig(level=logging.CRITICAL, format='%(message)s')
+            logging.basicConfig(level=logging.WARNING, format='%(message)s')
 
         if '-return_pose_scores' in args:
             params['return_pose_scores'] = True
@@ -677,7 +677,14 @@ def scoring(params):
 
         smi_dict = get_smiles(params['ligand'])
 
-        multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
+        logging.info('Generating 3D pdbs from SMILES...')
+        gypsum_count = multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
+
+        if sum(gypsum_count) > 0:
+            logging.info('\n**************************************************************************')
+            logging.info(f'Used Gypsum-DL to clean {sum(gypsum_count)} input SMILES:')
+            logging.info('**************************************************************************')
+            print_gypsum_citation()
 
         pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
         logging.info('Converting pdbs to pdbqts...')

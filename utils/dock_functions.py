@@ -18,6 +18,10 @@ from rdkit.Chem import AllChem
 from rdkit import RDLogger
 import sys
 import subprocess
+from utils.gypsum_dl.gypsum_dl import Start
+
+used_gypsum = False
+gypsum_count = 0
 
 RDLogger.DisableLog('rdApp.*')
 
@@ -34,7 +38,7 @@ def get_smiles(smi_datafile):
 
     lines = open(smi_datafile,'r').read().split('\n')
 
-    lines = [l for l in lines if l != '']
+    lines = [l for l in lines if l != ''][22000:22100]
 
     for count, line in enumerate(lines):
         count = count + 1
@@ -46,6 +50,73 @@ def get_smiles(smi_datafile):
         smi_dict[line[1]] = line[0]
 
     return smi_dict
+
+def print_gypsum_citation():
+
+    """
+    Print out the citation for the Gypsum-DL paper.
+    Because this is before the Parallelizer is initiallized it requires
+    limiting the print statement to the cpu ranked=0.
+    Without this check, in MPI mode it would print once per available cpu.
+    """
+
+    import sys
+
+    # And always report citation information.
+    citation_print = "\n"
+    citation_print = (
+        citation_print
+        + "Ropp, Patrick J., Jacob O. Spiegel, Jennifer L. Walker, Harrison Green,\n"
+    )
+    citation_print = (
+        citation_print
+        + "Guillermo A. Morales, Katherine A. Milliken, John J. Ringe, and Jacob D. Durrant.\n"
+    )
+    citation_print = (
+        citation_print
+        + "(2019) Gypsum-DL: An Open-source Program for Preparing Small-molecule Libraries for \n"
+    )
+    citation_print = (
+        citation_print
+        + "Structure-based Virtual Screening. Journal of Cheminformatics 11:1. "
+    )
+    citation_print = citation_print + "\ndoi:10.1186/s13321-019-0358-3.\n"
+
+    try:
+        from mpi4py import MPI
+
+        comm = MPI.COMM_WORLD
+        rank = comm.rank
+        if rank == 0:
+            print(citation_print)
+    except:
+        logging.info(citation_print)
+
+def clean_and_convert_smile_with_gypsum_dl(smile, name):
+
+    args = {'source': [(smile, str(name), {})],
+            'job_manager': 'multiprocessing',
+            'num_processors': 1,
+            'max_variants_per_compound': 1,
+            'separate_output_files': True,
+            'add_pdb_output': True,
+            'add_html_output': False,
+            'min_ph': 6.8,
+            'max_ph': 7.2,
+            'skip_optimize_geometry': True,
+            'skip_alternate_ring_conformations': True,
+            'skip_adding_hydrogen': True,
+            'skip_making_tautomers': True,
+            'skip_enumerate_chiral_mol': True,
+            'skip_enumerate_double_bonds': True,
+            'let_tautomers_change_chirality': False,
+            'use_durrant_lab_filters': True,
+            '2d_output_only': False,
+            'cache_prerun': False,
+            'test': False,
+            'output_folder':'utils/temp/pdb_files/'}
+
+    Start.prepare_molecules(args)
 
 def convert_to_rdmol(file, file_extension, sanitize_bool):
 
@@ -129,7 +200,7 @@ def autodock_convert(merged_tuple_filepaths): # converts files from .pdb format 
     try:
         output = subprocess.check_output(f'{pythonsh_path} {prepare_ligand_path} -l {ligand_filepath} -A hydrogens -o {destination_path}{ligand_filename}qt -U nphs', shell=True, stderr=subprocess.STDOUT)
     except:
-        print(f'ERROR: {ligand_filepath}')
+        logging.warning(f'WARNING: Skipping {ligand_filepath} - MGLTools conversion error')
 
 def merge_args(filepath1, filepaths):
 
@@ -142,11 +213,11 @@ def merge_args(filepath1, filepaths):
 
 def make_pdbs_from_smiles(smi_tuple): # make and save pdb copies of active smiles files
 
+    id = smi_tuple[0]
+
+    smi = smi_tuple[1]
+
     try:
-
-        id = smi_tuple[0]
-
-        smi = smi_tuple[1]
 
         # give the smile atoms coordinates and temporary hydrogens for addition of 3D structure
         ligand = Chem.MolFromSmiles(smi)
@@ -158,6 +229,13 @@ def make_pdbs_from_smiles(smi_tuple): # make and save pdb copies of active smile
 
         Chem.MolToPDBFile(ligand, f'utils/temp/pdb_files/{id}.pdb')
 
+        return 0
+
     except Exception as e:
 
-        print(f'Could not convert {id} to pdb: {str(e)}')
+        try:
+            clean_and_convert_smile_with_gypsum_dl(smi, id)
+            return 1
+        except:
+           logging.warning(f'{smi}')
+           logging.warning(f'WARNING: Could not convert {id} (above) to pdb: {str(e)}')
