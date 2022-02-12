@@ -101,23 +101,23 @@ sudo chown -R $USER ~/.conda
 # create the conda environment
 conda env create -f scorch.yml python=3.6.9
 
-echo -e """
-###############################################################
-# building GWOVina 1.0 in utils/
-###############################################################
-"""
-
-# define which GWOVina release to install based on OS
+# if linux system, install GWOVina 1.0
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     PLATFORM="linux"
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    PLATFORM="mac"
-fi
+    echo -e """
+    ###############################################################
+    # building GWOVina 1.0 in utils/
+    ###############################################################
+    """
 
-# build GWOVina 1.0 in the utils folder
-cd utils && tar -xzvf gwovina-1.0.tar.gz
-cd gwovina-1.0/build/$PLATFORM/release
-sudo make -j2
+    # define which GWOVina release to install based on OS
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        PLATFORM="linux"
+
+    # build GWOVina 1.0 in the utils folder
+    cd utils && tar -xzvf gwovina-1.0.tar.gz
+    cd gwovina-1.0/build/$PLATFORM/release
+    sudo make -j2
 
 # return to the base directory
 cd $BASEDIR
@@ -137,6 +137,13 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     PLATFORM="mac"
     MGLFOLDER="mgltools_i86Darwin9_1.5.6"
+    echo -e """
+    ###############################################################
+    WARNING: MGLTools-1.5.6 does not run on M1 Macs, or Macs
+    running Catalina OS or later - this install will fail on these
+    machines
+    ###############################################################
+    """
     curl https://ccsb.scripps.edu/download/552/ -o utils/mgltools1-5-6.tar.gz -k
 fi
 
