@@ -38,7 +38,7 @@ def get_smiles(smi_datafile):
 
     lines = open(smi_datafile,'r').read().split('\n')
 
-    lines = [l for l in lines if l != ''][22000:22100]
+    lines = [l for l in lines if l != '']
 
     for count, line in enumerate(lines):
         count = count + 1
