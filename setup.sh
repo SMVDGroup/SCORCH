@@ -109,16 +109,11 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # building GWOVina 1.0 in utils/
     ###############################################################
     """
-
-    # define which GWOVina release to install based on OS
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        PLATFORM="linux"
-
     # build GWOVina 1.0 in the utils folder
     cd utils && tar -xzvf gwovina-1.0.tar.gz
     cd gwovina-1.0/build/$PLATFORM/release
     sudo make -j2
-
+fi
 # return to the base directory
 cd $BASEDIR
 

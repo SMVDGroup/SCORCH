@@ -32,4 +32,4 @@ Number of threads to parallelise scoring over (Default 1)
 PARAMETER FILES:
 
 	-utils/dock_settings.json:
-File containing filepaths for GWOVina and MGLTools 1.5.6 local installations, as well as GWOVina settings for preparing and docking ligands in SMILE format.
+File containing GWOVina settings for preparing and docking       ligands in SMILE format.
