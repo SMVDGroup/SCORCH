@@ -22,8 +22,8 @@ SCORCH uses a variety of descriptors to characterize a docked pose, including [B
 # Installation
 
 ### **Currently SCORCH is only compatible with OS X and Linux; Docking and Scoring SMILES is only available on Linux systems**
-### **Please note MGLTools does not work with M1 Macs or Macs running Catalina OS**
-Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script. This is run slightly differently on linux vs mac:
+
+Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script. This will also install MGLTools 1.5.6, and on Linux systems will install GWOVina 1.0.
 
 To install SCORCH:
 
