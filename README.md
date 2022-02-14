@@ -22,7 +22,7 @@ SCORCH uses a variety of descriptors to characterize a docked pose, including [B
 # Installation
 
 ### **Currently SCORCH is only compatible with OS X and Linux; Docking and Scoring SMILES is only available on Linux systems**
-
+### **Please note MGLTools does not work with M1 Macs or Macs running Catalina OS**
 Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script. This is run slightly differently on linux vs mac:
 
 To install SCORCH:
@@ -40,6 +40,8 @@ sudo chmod 755 setup.sh
 ```
 
 # Receptor & Ligand Preparation
+
+### **Please note MGLTools does not work with M1 Macs or Macs running Catalina OS**
 
 The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Any `.pdb` receptor files should be prepared with the supplied [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using `prepare_receptor4.py` Python script as follows:
 
