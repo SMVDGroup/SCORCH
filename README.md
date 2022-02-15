@@ -56,9 +56,7 @@ The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` liga
 -U nphs
 ```
 
-SMILES ligands need no preprocessing; Problematic input SMILES are standardised using [Gypsum-DL](https://durrantlab.pitt.edu/gypsum-dl/), a useful and robust tool for creating 3D SDF and PDB files from SMILES inputs. **Gypsum-DL was not used to prepare training data, so if large amounts of your SMILES inputs are needing standardising there is a chance it may impact performance**.
-
-For pre-docked `.pdbqt` ligands, we recommend only scoring docking results in `.pdbqt` format (ideally from AutoDock or GWOVina). Scoring results from other docking software might be possible if converted to `.pdbqt`.
+SMILES ligands need no preprocessing.For pre-docked `.pdbqt` ligands, we recommend only scoring docking results in `.pdbqt` format (ideally from AutoDock or GWOVina). Scoring results from other docking software might be possible if converted to `.pdbqt`.
 
 # Usage
 

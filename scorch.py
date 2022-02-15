@@ -678,13 +678,9 @@ def scoring(params):
         smi_dict = get_smiles(params['ligand'])
 
         logging.info('Generating 3D pdbs from SMILES...')
-        gypsum_count = multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
+        fixes = multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
 
-        if sum(gypsum_count) > 0:
-            logging.info('\n**************************************************************************')
-            logging.info(f'Used Gypsum-DL to clean {sum(gypsum_count)} input SMILES:')
-            logging.info('**************************************************************************')
-            print_gypsum_citation()
+        print(sum(fixes))
 
         pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
         logging.info('Converting pdbs to pdbqts...')
@@ -692,7 +688,7 @@ def scoring(params):
 
         multiprocess_wrapper(autodock_convert, merged_pdb_args.items(), params['threads'])
 
-        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+        get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
 
         if platform.lower() == 'darwin':
             os_name = 'mac'
