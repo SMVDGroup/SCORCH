@@ -688,7 +688,7 @@ def scoring(params):
 
         multiprocess_wrapper(autodock_convert, merged_pdb_args.items(), params['threads'])
 
-        get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
 
         if platform.lower() == 'darwin':
             os_name = 'mac'
