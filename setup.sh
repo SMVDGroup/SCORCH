@@ -46,21 +46,21 @@ echo -e """
 # if conda is not a recognised command then download and install
 if ! command -v conda &> /dev/null; then
     echo -e "\nNo conda found - installing..."
+    cd utils && mkdir miniconda3
     # if linux then get linux version
     if [[ "$OSTYPE" == "linux"* ]]; then
-    	sudo mkdir utils/miniconda3
-    	sudo wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O utils/miniconda3/miniconda.sh
+    	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda3/miniconda.sh
     # if mac then get mac version
     elif [[ "$OSTYPE" == "darwin"* ]]; then
-	    sudo mkdir utils/miniconda3
-      sudo curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -o utils/miniconda3/miniconda.sh
+      curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -o miniconda3/miniconda.sh
     fi
 
     # install miniconda3
-    sudo bash utils/miniconda3/miniconda.sh -b -u -p utils/miniconda3
+    cd miniconda3 && chmod -x miniconda3
+    cd $BASEDIR && bash utils/miniconda3/miniconda.sh -b -u -p utils/miniconda3
 
     # remove the installer
-    sudo rm -rf utils/miniconda3/miniconda.sh
+    rm -f utils/miniconda3/miniconda.sh
 
     # define conda installation paths
     CONDA_PATH="utils/miniconda3/bin/conda"
@@ -80,8 +80,13 @@ echo -e """
 ###############################################################
 """
 # source the bash files to enable conda command in the same session
-source ~/.bashrc
-source ~/.bash_profile
+if test -f ~/.bashrc; then
+    source ~/.bashrc
+fi
+
+if test -f ~/.bash_profile; then
+    source ~/.bash_profile
+fi
 
 # initiate conda
 $CONDA_PATH init bash
@@ -93,10 +98,10 @@ source $CONDA_SH
 $CONDA_PATH config --set auto_activate_base false
 conda config --set channel_priority strict
 
-# repair permissions from sudo installing conda
-# (necessary as some users will get a permission error)
-sudo chown -R $USER $CONDA_BASE
-sudo chown -R $USER ~/.conda
+# # repair permissions from sudo installing conda
+# # (necessary as some users will get a permission error)
+# sudo chown -R $USER $CONDA_BASE
+# sudo chown -R $USER ~/.conda
 
 # create the conda environment
 conda env create -f scorch.yml python=3.6.9
