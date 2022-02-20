@@ -56,7 +56,7 @@ if ! command -v conda &> /dev/null; then
     fi
 
     # install miniconda3
-    cd miniconda3 && chmod -x miniconda3
+    cd miniconda3 && chmod -x miniconda.sh
     cd $BASEDIR && bash utils/miniconda3/miniconda.sh -b -u -p utils/miniconda3
 
     # remove the installer
