@@ -33,7 +33,7 @@ env GIT_SSL_NO_VERIFY=true git clone https://gitfront.io/r/mmcgibbon/cff5aca4804
 
 # ensure setup.sh is executable
 cd SCORCH
-sudo chmod+x setup.sh
+sudo chmod +x setup.sh
 
 # execute the setup script
 ./setup.sh
