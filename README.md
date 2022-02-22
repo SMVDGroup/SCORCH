@@ -29,11 +29,11 @@ To install SCORCH:
 
 ```bash
 # clone the GitHub repository
-git clone https://github.com/miles-mcgibbon/SCORCH.git
+env GIT_SSL_NO_VERIFY=true git clone https://gitfront.io/r/mmcgibbon/cff5aca4804137fbf88d4c7357b32f0cd1c20ad1/SCORCH.git
 
 # ensure setup.sh is executable
 cd SCORCH
-sudo chmod 755 setup.sh
+sudo chmod+x setup.sh
 
 # execute the setup script
 ./setup.sh
