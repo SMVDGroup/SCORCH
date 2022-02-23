@@ -50,7 +50,7 @@ The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` liga
 # preparing a receptor
 ./utils/MGLTools-1.5.6/bin/pythonsh \
 ./utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py \
--l path/to/receptor.pdb \
+-r path/to/receptor.pdb \
 -A hydrogens \
 -o path/to/save/receptor.pdbqt
 -U nphs
