@@ -106,28 +106,43 @@ conda config --set channel_priority strict
 # create the conda environment
 conda env create -f scorch.yml python=3.6.9
 
-# if linux system, install GWOVina 1.0
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    PLATFORM="linux"
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    PLATFORM="mac"
-fi
+
 echo -e """
 ###############################################################
 # building GWOVina 1.0 in utils/
 ###############################################################
 """
+
 cd utils && tar -xzvf gwovina-1.0.tar.gz
-cd gwovina-1.0/build/$PLATFORM/release
-rm Makefile
-echo -e "BOOST_VERSION=1_68\n"\
-"BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib\n"\
-"C_PLATFORM= -pthread\n"\
-"GPP=g++\n"\
-"C_OPTIONS= -O3 -DNDEBUG\n"\
-"BOOST_LIB_VERSION=\n\n"\
-"include ../../makefile_common\n"\ > Makefile
-make -j2
+
+# if linux system, install GWOVina 1.0
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    PLATFORM="linux"
+    cd utils && tar -xzvf gwovina-1.0.tar.gz
+    cd gwovina-1.0/build/$PLATFORM/release
+    rm Makefile
+    echo -e "BOOST_VERSION=1_68\n"\
+    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib\n"\
+    "C_PLATFORM= -pthread\n"\
+    "GPP=g++\n"\
+    "C_OPTIONS= -O3 -DNDEBUG\n"\
+    "BOOST_LIB_VERSION=\n\n"\
+    "include ../../makefile_common\n"\ > Makefile
+    make -j2
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    PLATFORM="mac"
+    cd gwovina-1.0/build/$PLATFORM/release
+    rm Makefile
+    echo -e "BOOST_VERSION=1_68\n"\
+    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib\n"\
+    "C_PLATFORM=-arch i386 -arch ppc -isysroot /Developer/SDKs/MacOSX10.5.sdk -mmacosx-version-min=10.4\n"\
+    "GPP=/usr/bin/g++\n"\
+    "C_OPTIONS= -O3 -DNDEBUG\n"\
+    "BOOST_LIB_VERSION=\n\n"\
+    "include ../../makefile_common\n"\ > Makefile
+    make -j2
+
+fi
 
 # return to the base directory
 cd $BASEDIR
