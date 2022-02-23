@@ -50,9 +50,9 @@ The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` liga
 # preparing a receptor
 ./utils/MGLTools-1.5.6/bin/pythonsh \
 ./utils/MGLTools-1.5.6/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor4.py \
--r path/to/receptor.pdb \
+-r examples/predocked_1a0q/1a0q_receptor.pdb \
 -A hydrogens \
--o path/to/save/receptor.pdbqt
+-o examples/predocked_1a0q/1a0q_receptor_out.pdbqt \
 -U nphs
 ```
 
@@ -88,9 +88,9 @@ SCORCH includes a full pipeline to convert SMILES ligands to `.pdbqt` files usin
 
 ```bash
 python scorch.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/smiles/ligands.smi  \
--ref_lig /home/user/ligands/reference_ligand.pdb \
+-receptor examples/smiles_REPTIN/reptin_receptor.pdbqt \
+-ligand examples/smiles_REPTIN/reptin_smiles.smi  \
+-ref_lig examples/smiles_REPTIN/reptin_ref_lig.pdbqt \
 -out scoring_results.csv
 ```
 
@@ -98,10 +98,10 @@ The binding site for docking can be defined with a reference ligand as above wit
 
 ```bash
 python scorch.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/smiles/ligands.smi  \
--center '[14, 19, -24]' \
--range '[14, 14, 14]' \
+-receptor examples/smiles_REPTIN/reptin_receptor.pdbqt \
+-ligand examples/smiles_REPTIN/reptin_smiles.smi  \
+-center '[23.981,-42.667,67.156]' \
+-range '[16.5,14.25,16.5]' \
 -out scoring_results.csv
 ```
 
@@ -117,21 +117,20 @@ Docking settings can be changed by editing the `utils/params/dock_settings.json`
 
 ### Scoring Already Docked Ligands Against a Receptor (**Linux & Mac**)
 
-For scoring a single ligand - `/home/user/ligands/ligand.pdbqt` - against a single receptor - `/home/user/receptors/receptor.pdbqt`:
+For scoring a single ligand - `examples/predocked_1a0q/ligands/1a0q_docked_ligand.pdbqt` - against a single receptor - `examples/predocked_1a0q/1a0q_receptor.pdbqt`:
 
 ```bash
 python scorch.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/ligands/ligand.pdbqt
+-receptor examples/predocked_1a0q/1a0q_receptor.pdbqt \
+-ligand examples/predocked_1a0q/ligands/1a0q_docked_ligand.pdbqt
 ```
 
-For scoring all `.pdbqt` ligands in the directory - `/home/user/ligands/` - against a single receptor - `/home/user/receptors/receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
+For scoring all `.pdbqt` ligands in the directory - `examples/predocked_1a0q/ligands/` - against a single receptor - `examples/predocked_1a0q/1a0q_receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
 
 ```bash
 python scorch.py \
--receptor /home/user/receptors/receptor.pdbqt \
--ligand /home/user/ligands/  \
--out scoring_results.csv
+-receptor examples/predocked_1a0q/1a0q_receptor.pdbqt \
+-ligand examples/predocked_1a0q/ligands/ \
 # this writes the output scores to a file
 -out scoring_results.csv \
 # this parallelises the scoring over 6 threads
@@ -147,14 +146,16 @@ The main function from `scorch.py` can be imported and used in other Python scri
 ```python
 from scorch import scoring, parse_module_args
 
-input_parameters = {'ligand': '/path/to/ligand.pdbqt',
-                  'receptor': '/path/to/receptor.pdbqt',
+input_parameters = {'ligand': 'examples/predocked_1a0q/ligands/',
+                  'receptor': 'examples/predocked_1a0q/1a0q_receptor.pdbqt',
                   'threads': 4,
                   'verbose': False}
 
 parsed_parameters = parse_module_args(input_parameters)
 
 output = scoring(parsed_parameters)
+
+print(output)
 ```
 
 # Output
