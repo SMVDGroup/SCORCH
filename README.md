@@ -43,7 +43,7 @@ sudo chmod +x setup.sh
 
 Due to MGLTools-1.5.6 conflicts with newer Mac OS versions and M1 chips, SCORCH and SCORCH's SMILES docking and scoring pipeline can only be run on Mac OS systems via [Docker](https://www.docker.com/) which can be installed [here](https://docs.docker.com/get-docker/). Docker can also be used to run SCORCH on Linux systems in case of problems with the installation script.
 
-Once Docker is installed, SCORCH can be setup as follows:
+To set up SCORCH once Docker is installed:
 
 ```bash
 # download the scorch docker image
@@ -71,11 +71,11 @@ The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` liga
 -U nphs
 ```
 
-SMILES ligands need no preprocessing.For pre-docked `.pdbqt` ligands, we recommend only scoring docking results in `.pdbqt` format (ideally from AutoDock or GWOVina). Scoring results from other docking software might be possible if converted to `.pdbqt`.
+SMILES ligands need no preprocessing. For pre-docked `.pdbqt` ligands, we recommend only scoring docking results in `.pdbqt` format (ideally from AutoDock or GWOVina). Scoring results from other docking software might be possible if converted to `.pdbqt`.
 
 # Usage
 
-To use the scoring function on both Linux and Mac OS, the conda environment needs to be activated first:
+**To use the scoring function on both Linux and Mac OS, the conda environment needs to be activated first:**
 
 ```bash
 conda activate scorch
