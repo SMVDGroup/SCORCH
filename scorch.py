@@ -560,7 +560,8 @@ def print_intro(params):
         logging.info(f'Parsed {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
 
     else:
-        ligand_count = len(open(params["ligand"]).read().split("\n"))
+        ligand_count = open(params["ligand"]).read().split("\n")
+        ligand_count = len([l for l in ligand_count if l != ''])
         logging.info(f'Parsed {ligand_count} ligand smiles for docking and scoring against a single receptor...\n')
 
         logging.info('**************************************************************************\n')
