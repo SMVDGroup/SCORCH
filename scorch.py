@@ -680,8 +680,6 @@ def scoring(params):
         logging.info('Generating 3D pdbs from SMILES...')
         fixes = multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
 
-        print(sum(fixes))
-
         pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
         logging.info('Converting pdbs to pdbqts...')
         merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
