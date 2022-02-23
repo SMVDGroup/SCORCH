@@ -21,11 +21,11 @@ SCORCH uses a variety of descriptors to characterize a docked pose, including [B
 
 # Installation
 
-### **Currently SCORCH is only compatible with OS X and Linux; Docking and Scoring SMILES is only available on Linux systems**
+## Linux
 
-Installation on linux and mac is achieved via [conda](https://docs.conda.io/en/latest/). The silent installation of miniconda (which will not affect any existing conda or python installations), SCORCH dependencies and SCORCH setup is all performed with the supplied setup bash script. This will additionally install MGLTools 1.5.6, and on Linux systems will also install GWOVina 1.0.
+Installation on Linux is achieved via [conda](https://docs.conda.io/en/latest/). The supplied setup bash script installs SCORCH and dependencies in a conda environment, MGLTools 1.5.6 and GWOVina 1.0. If you do not have conda installed, the setup bash script installs it for you silently in the SCORCH directory.
 
-To install SCORCH:
+To install SCORCH on Linux:
 
 ```bash
 # clone the GitHub repository
@@ -39,9 +39,24 @@ sudo chmod +x setup.sh
 ./setup.sh
 ```
 
-# Receptor & Ligand Preparation
+## Mac OS
 
-### **Please note MGLTools does not work with M1 Macs or Macs running Catalina OS**
+Due to MGLTools-1.5.6 conflicts with newer Mac OS versions and M1 chips, SCORCH and SCORCH's SMILES docking and scoring pipeline can only be run on Mac OS systems via [Docker](https://www.docker.com/) which can be installed [here](https://docs.docker.com/get-docker/). Docker can also be used to run SCORCH on Linux systems in case of problems with the installation script.
+
+Once Docker is installed, SCORCH can be setup as follows:
+
+```bash
+# download the scorch docker image
+docker pull scorchml/scorch:v1.0
+
+# run the scorch docker image
+docker run -i -t scorchml/scorch:v1.0 /bin/bash
+
+# once inside the docker image
+cd home/SCORCH
+```
+
+# Receptor & Ligand Preparation
 
 The scoring function accepts `.pdbqt` receptor files and SMILES or `.pdbqt` ligand files as inputs. Any `.pdb` receptor files should be prepared with the supplied [MGLTools 1.5.6](https://ccsb.scripps.edu/mgltools/1-5-6/) using `prepare_receptor4.py` Python script as follows:
 
@@ -60,7 +75,7 @@ SMILES ligands need no preprocessing.For pre-docked `.pdbqt` ligands, we recomme
 
 # Usage
 
-To use the scoring function, the conda environment needs to be activated first:
+To use the scoring function on both Linux and Mac OS, the conda environment needs to be activated first:
 
 ```bash
 conda activate scorch
@@ -82,7 +97,7 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 
 For further details on arguments, run `python scorch.py -h`.
 
-### Docking and Scoring SMILES Ligands Against a Receptor (**Linux Only**)
+### Docking and Scoring SMILES Ligands Against a Receptor
 
 SCORCH includes a full pipeline to convert SMILES ligands to `.pdbqt` files using MGLTools 1.5.6, dock them using GWOVina, and score them with SCORCH:
 
@@ -115,7 +130,7 @@ CCC(CC)O[C@@H]1C=C(C[C@@H]([C@H]1NC(=O)C)N)C(=O)NOC 118722031
 
 Docking settings can be changed by editing the `utils/params/dock_settings.json` file in the scoring function folder. See the function help for additional details.
 
-### Scoring Already Docked Ligands Against a Receptor (**Linux & Mac**)
+### Scoring Already Docked Ligands Against a Receptor
 
 For scoring a single ligand - `examples/predocked_1a0q/ligands/1a0q_docked_ligand.pdbqt` - against a single receptor - `examples/predocked_1a0q/1a0q_receptor.pdbqt`:
 
