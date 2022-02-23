@@ -122,7 +122,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     "C_PLATFORM= -pthread\n"\
     "GPP=g++\n"\
     "C_OPTIONS= -O3 -DNDEBUG\n"\
-    "BOOST_LIB_VERSION=1.68\n\n"\
+    "BOOST_LIB_VERSION=\n\n"\
     "include ../../makefile_common\n"\ > Makefile
     make -j2
 fi
