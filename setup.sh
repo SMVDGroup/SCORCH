@@ -118,7 +118,6 @@ cd utils && tar -xzvf gwovina-1.0.tar.gz
 # if linux system, install GWOVina 1.0
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     PLATFORM="linux"
-    cd utils && tar -xzvf gwovina-1.0.tar.gz
     cd gwovina-1.0/build/$PLATFORM/release
     rm Makefile
     echo -e "BOOST_VERSION=1_68\n"\
