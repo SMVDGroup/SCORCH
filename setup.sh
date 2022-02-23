@@ -114,6 +114,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     # building GWOVina 1.0 in utils/
     ###############################################################
     """
+    cd utils && tar -xzvf gwovina-1.0.tar.gz
+    cd gwovina-1.0/build/$PLATFORM/release
     installcommand=$(command -v yum)
 
     # if yum doesn't exist, assume debian
@@ -121,14 +123,14 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         sudo make -j2
     else
         rm Makefile
-        echo -e "BASE=/usr/local"\
-        "BOOST_VERSION=1_59"\
-        "BOOST_INCLUDE = $(BASE)/lib"\
-        "C_PLATFORM= -pthread"\
-        "GPP=g++"\
-        "C_OPTIONS= -O3 -DNDEBUG"\
-        "BOOST_LIB_VERSION="\
-        "include ../../makefile_common"\ > Makefile
+        echo -e "BASE=/usr/local\n"\
+        "BOOST_VERSION=1_59\n"\
+        "BOOST_INCLUDE = /usr/local/lib\n"\
+        "C_PLATFORM= -pthread\n"\
+        "GPP=g++\n"\
+        "C_OPTIONS= -O3 -DNDEBUG\n"\
+        "BOOST_LIB_VERSION=\n\n"\
+        "include ../../makefile_common\n"\ > Makefile
         sudo make -j2
     fi
 fi
