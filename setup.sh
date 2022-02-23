@@ -116,23 +116,15 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     """
     cd utils && tar -xzvf gwovina-1.0.tar.gz
     cd gwovina-1.0/build/$PLATFORM/release
-    installcommand=$(command -v yum)
-
-    # if yum doesn't exist, assume debian
-    if [ -z "$installcommand" ]; then
-        sudo make -j2
-    else
-        rm Makefile
-        echo -e "BASE=/usr/local\n"\
-        "BOOST_VERSION=1_59\n"\
-        "BOOST_INCLUDE = /usr/local/lib\n"\
-        "C_PLATFORM= -pthread\n"\
-        "GPP=g++\n"\
-        "C_OPTIONS= -O3 -DNDEBUG\n"\
-        "BOOST_LIB_VERSION=\n\n"\
-        "include ../../makefile_common\n"\ > Makefile
-        sudo make -j2
-    fi
+    rm Makefile
+    echo -e "BOOST_VERSION=1_68\n"\
+    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib\n"\
+    "C_PLATFORM= -pthread\n"\
+    "GPP=g++\n"\
+    "C_OPTIONS= -O3 -DNDEBUG\n"\
+    "BOOST_LIB_VERSION=1.68\n\n"\
+    "include ../../makefile_common\n"\ > Makefile
+    make -j2
 fi
 
 # return to the base directory
@@ -166,7 +158,7 @@ fi
 # build MGLTools 1.5.6 in utils folder
 cd utils && tar -xzvf mgltools1-5-6.tar.gz
 mv $MGLFOLDER MGLTools-1.5.6
-cd MGLTools-1.5.6 && sudo ./install.sh
+cd MGLTools-1.5.6 && ./install.sh
 
 # notify user setup is complete
 
