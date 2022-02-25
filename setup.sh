@@ -30,7 +30,7 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
             echo -e "\nDetected RedHat! Using yum to install packages..."
             # install dependencies for redhat with yum
             yes | sudo yum update
-        		yes | sudo yum groupinstall 'Development Tools'
+        		yes | sudo yum groupinstall 'Development Tools' --setopt=group_package_types=mandatory,default,optional
             yes | sudo yum install boost-devel
   	fi
 fi
@@ -64,7 +64,7 @@ if ! command -v conda &> /dev/null; then
 
     # define conda installation paths
     CONDA_PATH="utils/miniconda3/bin/conda"
-    CONDA_BASE="utils/miniconda3"
+    CONDA_BASE=$BASEDIR/utils/miniconda3
     CONDA_SH="utils/miniconda3/etc/profile.d/conda.sh"
 else
     echo -e "\nFound existing conda install!"
@@ -119,8 +119,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     cd utils && tar -xzvf gwovina-1.0.tar.gz
     cd gwovina-1.0/build/$PLATFORM/release
     rm Makefile
-    echo -e "BOOST_VERSION=1_68\n"\
-    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib\n"\
+    echo -e "BASE=$CONDA_BASE/envs/scorch"
+    "BOOST_VERSION=1_68\n"\
+    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib -I $CONDA_BASE/envs/scorch/include\n"\
     "C_PLATFORM= -pthread\n"\
     "GPP=g++\n"\
     "C_OPTIONS= -O3 -DNDEBUG\n"\
