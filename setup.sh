@@ -25,13 +25,12 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
             echo -e "\nDetected Debian! Using apt-get to install packages..."
             yes | sudo apt-get update
             # install dependencies for debian with apt-get
-        		yes | sudo apt-get install build-essential libboost-all-dev
+        		yes | sudo apt-get install build-essential
   	else
             echo -e "\nDetected RedHat! Using yum to install packages..."
             # install dependencies for redhat with yum
             yes | sudo yum update
         		yes | sudo yum groupinstall 'Development Tools' --setopt=group_package_types=mandatory,default,optional
-            yes | sudo yum install boost-devel
   	fi
 fi
 
@@ -119,7 +118,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     cd utils && tar -xzvf gwovina-1.0.tar.gz
     cd gwovina-1.0/build/$PLATFORM/release
     rm Makefile
-    echo -e "BASE=$CONDA_BASE/envs/scorch"
+    echo -e "BASE=$CONDA_BASE/envs/scorch\n"\
     "BOOST_VERSION=1_68\n"\
     "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib -I $CONDA_BASE/envs/scorch/include\n"\
     "C_PLATFORM= -pthread\n"\
