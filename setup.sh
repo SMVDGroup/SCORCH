@@ -118,9 +118,9 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     cd utils && tar -xzvf gwovina-1.0.tar.gz
     cd gwovina-1.0/build/$PLATFORM/release
     rm Makefile
-    echo -e "BASE=$CONDA_BASE/envs/scorch\n"\
+    echo -e "BASE=/usr/bin\n"\
     "BOOST_VERSION=1_59\n"\
-    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/include -L$CONDA_BASE/envs/scorch/lib -Wl,-rpath,\"$CONDA_BASE/envs/scorch/lib\"\n"\
+    "BOOST_INCLUDE=$BASE/include\n"\
     "C_PLATFORM= -pthread\n"\
     "GPP=g++\n"\
     "C_OPTIONS= -O3 -DNDEBUG\n"\
