@@ -121,7 +121,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     rm Makefile
     echo -e "BASE=/usr/bin\n"\
     "BOOST_VERSION=1_59\n"\
-    "BOOST_INCLUDE=$BASE/include\n"\
+    "BOOST_INCLUDE=$(BASE)/include\n"\
     "C_PLATFORM= -pthread\n"\
     "GPP=g++\n"\
     "C_OPTIONS= -O3 -DNDEBUG\n"\
