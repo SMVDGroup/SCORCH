@@ -25,11 +25,12 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
             echo -e "\nDetected Debian! Using apt-get to install packages..."
             yes | sudo apt-get update
             # install dependencies for debian with apt-get
-        		yes | sudo apt-get install build-essential
+            yes | sudo apt-get install build-essential libboost-all-dev
   	else
             echo -e "\nDetected RedHat! Using yum to install packages..."
             # install dependencies for redhat with yum
             yes | sudo yum update
+            yes | sudo yum install boost-devel
         		yes | sudo yum groupinstall 'Development Tools' --setopt=group_package_types=mandatory,default,optional
   	fi
 fi
