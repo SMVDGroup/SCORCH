@@ -119,8 +119,8 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     cd gwovina-1.0/build/$PLATFORM/release
     rm Makefile
     echo -e "BASE=$CONDA_BASE/envs/scorch\n"\
-    "BOOST_VERSION=1_68\n"\
-    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/lib -I $CONDA_BASE/envs/scorch/include\n"\
+    "BOOST_VERSION=1_59\n"\
+    "BOOST_INCLUDE=$CONDA_BASE/envs/scorch/include -L$CONDA_BASE/envs/scorch/lib\n"\
     "C_PLATFORM= -pthread\n"\
     "GPP=g++\n"\
     "C_OPTIONS= -O3 -DNDEBUG\n"\
