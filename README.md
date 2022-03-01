@@ -8,7 +8,7 @@
 
 ---
 
-SCORCH is a fast scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. SCORCH scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
+SCORCH (Scoring COnsensus for RMSD-based Classification of Hits) is a fast scoring function based on a consensus of machine learning models. Scoring functions are used to evaluate poses of molecules obtained from molecular docking. SCORCH scores range from 0 to 1, with higher values indicating a higher probability of the molecule binding tightly to the receptor.
 
 SCORCH uses `.pdbqt` files as input for the scoring, which is the format used by [Autodock](https://autodock.scripps.edu/), [Vina](https://dx.doi.org/10.1002/jcc.21334), and [GWOVina](https://cbbio.online/software/gwovina/index.html) docking software, among others. Additionally, this release contains an integrated pipeline to dock and score molecules in SMILES format using GWOVina.
 
