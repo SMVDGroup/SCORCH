@@ -49,7 +49,7 @@ if ! command -v conda &> /dev/null; then
     cd utils && mkdir miniconda3
     # if linux then get linux version
     if [[ "$OSTYPE" == "linux"* ]]; then
-    	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda3/miniconda.sh
+    	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda3/miniconda.sh --no-check-certificate
     # if mac then get mac version
     elif [[ "$OSTYPE" == "darwin"* ]]; then
       curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -o miniconda3/miniconda.sh
