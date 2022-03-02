@@ -779,15 +779,22 @@ def scoring(params):
                                      'SCORCH_certainty']].copy()
 
     merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
+    merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
     merged_results['SCORCH_score'] = merged_results.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
     merged_results['best_pose'] = np.where(merged_results.SCORCH_score == merged_results.SCORCH_pose_score, 1, 0)
+
+    del merged_results['Ligand']
 
     if not params['return_pose_scores']:
         merged_results = merged_results.loc[merged_results.best_pose == 1]
         merged_results = merged_results[['Receptor',
-                                         'Ligand',
+                                         'Ligand_ID',
+                                         'Pose_Number',
                                          'SCORCH_score',
                                          'SCORCH_certainty']].copy()
+
+    if params['dock']:
+        merged_results['Ligand_SMILE'] = merged_results['Ligand_ID'].map(smi_dict)
 
     numerics = list(merged_results.select_dtypes(include=[np.number]))
     merged_results[numerics] = merged_results[numerics].round(5)
