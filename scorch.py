@@ -11,8 +11,12 @@
 
 
 # import all libraries and ignore tensorflow warnings
+import xgboost as xgb
+import psutil
+import math
 import textwrap
 import os
+os.environ['NUMEXPR_MAX_THREADS'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 tf.get_logger().setLevel('ERROR')
@@ -32,7 +36,6 @@ import pickle
 import numpy as np
 import shutil
 import json
-import xgboost as xgb
 from tqdm import tqdm
 from warnings import filterwarnings
 from itertools import product, chain
@@ -274,6 +277,18 @@ def test(params):
 
     return np.mean(results)
 
+def load_all_dfs_from_pickle(pickle_file):
+    df_list = list()
+    with open(pickle_file, 'rb') as df_stack:
+        while True:
+            try:
+                sub_df = pickle.load(df_stack)
+                df_list.append(sub_df)
+            except EOFError:
+                break
+    return df_list
+
+
 def binary_concat(dfs, headers):
 
     ###########################################
@@ -458,9 +473,10 @@ def prepare_features(receptor_ligand_args):
     # Output: Writes results as row to output #
     # csv file                                #
     ###########################################
-
     params = receptor_ligand_args[1]
+    datastore_chunk_id = receptor_ligand_args[2]
     receptor_ligand_args = receptor_ligand_args[0]
+
 
     receptor = receptor_ligand_args[0]
     ligand = receptor_ligand_args[1]
@@ -475,9 +491,13 @@ def prepare_features(receptor_ligand_args):
     params['binana_params'][1] = receptor
     params['binana_params'][3] = lig_block
     cmd_params = binana.CommandLineParameters(params['binana_params'].copy())
+
     features = extract(cmd_params)
 
-    return (receptor_name, ligand_name, features)
+    multi_pose_features = transform_df(features)
+    multi_pose_features['Receptor'] = receptor_name
+    multi_pose_features['Ligand'] = ligand_name
+    multi_pose_features.to_pickle(os.path.join('utils','temp','binary_features',f'lig_{datastore_chunk_id}.pkl'))
 
 def score(models):
 
@@ -532,7 +552,6 @@ def multiprocess_wrapper(function, items, threads):
         results = list(tqdm(p.imap(function, items), total=len(items)))
         p.close()
         p.join()
-
     return results
 
 def print_intro(params):
@@ -740,65 +759,103 @@ def scoring(params):
         receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
 
     receptor_ligand_args  = list(map(lambda x: (x, params), receptor_ligand_args))
-    features = multiprocess_wrapper(prepare_features, receptor_ligand_args, params['threads'])
-    feature_headers = list(features[0][2])
-    features_df = binary_concat([i[2] for i in features], feature_headers)
-    multi_pose_features = transform_df(features_df)
-    multi_pose_features['Receptor'] = [i[0] for i in features]
-    multi_pose_features['Ligand'] = [i[1] for i in features]
+    receptor_ligand_args = [(r[0], r[1]) for r in receptor_ligand_args]
 
-    models = prepare_models(params)
-    models = list(models.items())
-    models = [(m[0], m[1], multi_pose_features) for m in models]
+    total_poses = len(receptor_ligand_args)
+    estimated_ram_usage = (360540*total_poses) + 644792975
+    available_ram = psutil.virtual_memory().total
+    safe_ram_available = available_ram*0.008
+    if estimated_ram_usage > safe_ram_available:
+        batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
+    else:
+        batches_needed = 1
 
-    model_results = list()
+    receptor_ligand_args = [(r[0], r[1], chunk_id) for r, chunk_id in zip(receptor_ligand_args, range(len(receptor_ligand_args)))]
 
-    for model in models:
-        model_results.append(score(model))
-        logging.info('Done!')
+    if not os.path.isdir(os.path.join('utils','temp','binary_features')):
+        os.makedirs(os.path.join('utils','temp','binary_features'))
 
+    for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
+        os.remove(os.path.join('utils','temp','binary_features',existing_file))
+
+    multiprocess_wrapper(prepare_features, receptor_ligand_args, params['threads'])
+
+    all_ligands_to_score = list_to_chunks(os.listdir(os.path.join('utils','temp','binary_features')),batches_needed)
+
+    ligand_scores = list()
 
     logging.info('**************************************************************************\n')
 
-    merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
+    for batch_number, feature_batch in enumerate(all_ligands_to_score):
 
-    multi_models = ['xgboost_model',
-                    'ff_nn_models_average',
-                    'wd_nn_models_average']
+        logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
 
-    merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
-    max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
-    minimum_val = 1 - max_std
-    maxmum_val = 1
-    merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
-    merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
+        multi_pose_features = pd.concat([pd.read_pickle(os.path.join('utils','temp','binary_features',pickle_file)) for pickle_file in feature_batch])
 
-    merged_results = merged_results[['Receptor',
-                                     'Ligand',
-                                     'SCORCH_pose_score',
-                                     'SCORCH_certainty']].copy()
+        models = prepare_models(params)
+        models = list(models.items())
+        models = [(m[0], m[1], multi_pose_features) for m in models]
 
-    merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
-    merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
-    merged_results['SCORCH_score'] = merged_results.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
-    merged_results['best_pose'] = np.where(merged_results.SCORCH_score == merged_results.SCORCH_pose_score, 1, 0)
+        model_results = list()
 
-    del merged_results['Ligand']
+        for model in models:
+            model_results.append(score(model))
+            logging.info('Done!')
 
-    if not params['return_pose_scores']:
-        merged_results = merged_results.loc[merged_results.best_pose == 1]
+
+        logging.info('**************************************************************************\n')
+
+        merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
+
+        multi_models = ['xgboost_model',
+                        'ff_nn_models_average',
+                        'wd_nn_models_average']
+
+        merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
+        max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
+        minimum_val = 1 - max_std
+        maxmum_val = 1
+        merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
+        merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
+
         merged_results = merged_results[['Receptor',
-                                         'Ligand_ID',
-                                         'Pose_Number',
-                                         'SCORCH_score',
+                                         'Ligand',
+                                         'SCORCH_pose_score',
                                          'SCORCH_certainty']].copy()
 
-    if params['dock']:
-        merged_results['Ligand_SMILE'] = merged_results['Ligand_ID'].map(smi_dict)
+        merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
+        merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
 
-    numerics = list(merged_results.select_dtypes(include=[np.number]))
-    merged_results[numerics] = merged_results[numerics].round(5)
-    return merged_results
+        del merged_results['Ligand']
+
+        ligand_scores.append(merged_results)
+
+    final_ligand_scores = pd.concat(ligand_scores)
+    final_ligand_scores['SCORCH_score'] = final_ligand_scores.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
+    final_ligand_scores['best_pose'] = np.where(final_ligand_scores.SCORCH_score == final_ligand_scores.SCORCH_pose_score, 1, 0)
+
+    if not params['return_pose_scores']:
+        final_ligand_scores = final_ligand_scores.loc[final_ligand_scores.best_pose == 1]
+        final_ligand_scores = final_ligand_scores[['Receptor',
+                                                    'Ligand_ID',
+                                                    'Pose_Number',
+                                                    'SCORCH_score',
+                                                    'SCORCH_certainty']].copy()
+        final_ligand_scores = final_ligand_scores.sort_values(by='SCORCH_score', ascending=False)
+
+    else:
+        final_ligand_scores = final_ligand_scores.sort_values(by=['SCORCH_score','SCORCH_pose_score'], ascending=False)
+
+    if params['dock']:
+        final_ligand_scores['Ligand_SMILE'] = final_ligand_scores['Ligand_ID'].map(smi_dict)
+
+    numerics = list(final_ligand_scores.select_dtypes(include=[np.number]))
+    final_ligand_scores[numerics] = final_ligand_scores[numerics].round(5)
+
+    for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
+        os.remove(os.path.join('utils','temp','binary_features',existing_file))
+
+    return final_ligand_scores
 
 if __name__ == "__main__":
 

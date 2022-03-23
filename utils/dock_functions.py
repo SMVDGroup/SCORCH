@@ -24,6 +24,10 @@ RDLogger.DisableLog('rdApp.*')
 
 stem_path = os.getcwd()
 
+def list_to_chunks(list_object, number_of_chunks):
+    for i in range(0, number_of_chunks):
+        yield list_object[i::number_of_chunks]
+
 def get_filepaths(folder_path):
     files = os.listdir(folder_path)
     files = [f'{folder_path}{file}' for file in files]
@@ -44,7 +48,7 @@ def get_smiles(smi_datafile):
             line = (line[0], count)
         elif line[1] == '':
             line = (line[0], count)
-        smi_dict[line[1]] = line[0]
+        smi_dict[str(line[1])] = line[0]
 
     return smi_dict
 
