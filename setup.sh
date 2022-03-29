@@ -13,7 +13,8 @@ echo -e """
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # dependencies for mac
     echo -e "\nDetected Max OS X!"
-    brew install libomp boost make gcc
+    echo -e "Due to GWOVina and MGLTools incompatibilities, please use the SCORCH Docker \nimage to run SCORCH on Mac OS!"
+    exit
 
 elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo -e "\nDetected Linux OS!"
@@ -51,8 +52,6 @@ if ! command -v conda &> /dev/null; then
     if [[ "$OSTYPE" == "linux"* ]]; then
     	wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda3/miniconda.sh --no-check-certificate
     # if mac then get mac version
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-      curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -o miniconda3/miniconda.sh
     fi
 
     # install miniconda3
@@ -98,11 +97,6 @@ source $CONDA_SH
 $CONDA_PATH config --set auto_activate_base false
 conda config --set channel_priority strict
 
-# # repair permissions from sudo installing conda
-# # (necessary as some users will get a permission error)
-# sudo chown -R $USER $CONDA_BASE
-# sudo chown -R $USER ~/.conda
-
 # create the conda environment
 conda env create -f scorch.yml python=3.6.9
 
@@ -144,18 +138,6 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     PLATFORM='linux'
     MGLFOLDER="mgltools_x86_64Linux2_1.5.6"
     wget https://ccsb.scripps.edu/download/548/ -O utils/mgltools1-5-6.tar.gz --no-check-certificate
-
-elif [[ "$OSTYPE" == "darwin"* ]]; then
-    PLATFORM="mac"
-    MGLFOLDER="mgltools_i86Darwin9_1.5.6"
-    echo -e """
-    ###############################################################
-    WARNING: MGLTools-1.5.6 does not run on M1 Macs, or Macs
-    running Catalina OS or later - this install will fail on these
-    machines
-    ###############################################################
-    """
-    curl https://ccsb.scripps.edu/download/552/ -o utils/mgltools1-5-6.tar.gz -k
 fi
 
 # build MGLTools 1.5.6 in utils folder
