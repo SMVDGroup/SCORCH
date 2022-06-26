@@ -676,7 +676,6 @@ def scoring(params):
         for file in params['ligand']:
             shutil.copy(file, docked_ligands_path)
 
-
     poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
 
     if params['pose_1']:
@@ -704,7 +703,8 @@ def scoring(params):
     for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
         os.remove(os.path.join('utils','temp','binary_features',existing_file))
 
-    multiprocess_wrapper(prepare_features, receptor_ligand_args, params['threads'])
+    for arg in receptor_ligand_args:
+        prepare_features(arg)
 
     all_ligands_to_score = list_to_chunks(os.listdir(os.path.join('utils','temp','binary_features')),batches_needed)
 
