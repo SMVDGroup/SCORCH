@@ -231,51 +231,6 @@ def run_xgboost_models(df):
     prediction = xgboost_models.predict(dtest)
     return prediction
 
-def test(params):
-
-    ###########################################
-    # Function: Wrapper to score              #
-    # single protein-ligand complex/pose      #
-    #                                         #
-    # Inputs: User defined params dictionary  #
-    #                                         #
-    # Output: Float single prediction or      #
-    # consensus mean prediction from all      #
-    # three models                            #
-    ###########################################
-
-    cmd_params = binana.CommandLineParameters(params['binana_params'].copy())
-    features = extract(cmd_params)
-    results = []
-
-    if params['ff_nn'] == True:
-        df = transform_df(features)
-        mlp_result = run_networks(params['num_networks'],df,'ff_nn')
-        results.append(mlp_result)
-
-    if params['wd_nn'] == True:
-        df = transform_df(features)
-        mlp_result = run_networks(params['num_networks'],df,'wd_nn')
-        results.append(mlp_result)
-
-    if params['xgboost_model'] == True:
-        df = transform_df(features)
-        xgb_result = run_xgboost_models(df)
-        results.append(xgb_result)
-
-    return np.mean(results)
-
-def load_all_dfs_from_pickle(pickle_file):
-    df_list = list()
-    with open(pickle_file, 'rb') as df_stack:
-        while True:
-            try:
-                sub_df = pickle.load(df_stack)
-                df_list.append(sub_df)
-            except EOFError:
-                break
-    return df_list
-
 
 def binary_concat(dfs, headers):
 
