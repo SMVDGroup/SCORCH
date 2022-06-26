@@ -623,6 +623,8 @@ def prepare_features(receptor_ligand_args):
 
     multi_pose_features = prune_df_headers(features)
 
+    multi_pose_features.fillna(0, inplace=True)
+
     timedict['after_transform'] = time.time()
 
     multi_pose_features['Receptor'] = receptor_basename
@@ -945,9 +947,9 @@ def scoring(params):
 
         multi_pose_features = pd.concat([pd.read_pickle(os.path.join('utils','temp','binary_features',pickle_file)) for pickle_file in feature_batch])
 
-        multi_pose_features.sort_values(by='Ligand').to_csv('update.csv', index=False)
-
         multi_pose_features = scale_multipose_features(multi_pose_features)
+
+        multi_pose_features.sort_values(by='Ligand').to_csv('update.csv', index=False)
 
         models = prepare_models(params)
         models = list(models.items())
