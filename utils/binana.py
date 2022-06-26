@@ -3170,24 +3170,6 @@ class Binana:
 
         # custom output for SCORCH
 
-        # this is the closest contacts
-        print(ligand_receptor_atom_type_pairs_less_than_two_half)
-
-        # this is the closest contacts
-        print(ligand_receptor_atom_type_pairs_less_than_four)
-        
-        # this is the electrostatics
-        print(ligand_receptor_atom_type_pairs_electrostatic)
-        
-        # this is the active site flexibility
-        print(active_site_flexibility)
-        
-        # these are the hbonds
-        print(hbonds)
-        
-        # these are the hydrophobics
-        print(hydrophobics)
-
         # these are the aromatics
         stacking = []
         t_shaped = []
@@ -3204,29 +3186,24 @@ class Binana:
                 t_shaped.append(together)
 
         # stacking
-        print(stacking)
         stacking_dict = dict()
         for pc in stacking:
             stack_name = '_'.join(pc.split('_')[:-1])
             stacking_dict[stack_name] = pc.split('_')[-1]
         
         # t-shaped
-        print(t_shaped)
         t_shaped_dict = dict()
         for pc in t_shaped:
             stack_name = '_'.join(pc.split('_')[:-1])
             t_shaped_dict[stack_name] = pc.split('_')[-1]
         
         # pi cations
-        print(pi_cation)
         pi_cation_dict = dict()
         for pc in pi_cation:
             stack_name = '_'.join(pc.split('_')[:-1])
             pi_cation_dict[stack_name] = pc.split('_')[-1]
         
-        # salt bridges
-        print(salt_bridges)
-
+        # build outputs into nested dictionary
         output = {'closest':ligand_receptor_atom_type_pairs_less_than_two_half,
                   'close':ligand_receptor_atom_type_pairs_less_than_four,
                   'elsums':ligand_receptor_atom_type_pairs_electrostatic,
