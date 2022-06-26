@@ -905,6 +905,8 @@ def score_ligand_batch(params, ligand_batch, model_binaries):
 
     model_results = list()
 
+    logging.info('**************************************************************************\n')
+
     for model in models:
         model_results.append(score(model))
         logging.info('Done!')
