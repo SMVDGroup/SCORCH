@@ -15,6 +15,7 @@ from multiprocessing.spawn import prepare
 import xgboost as xgb
 import psutil
 import math
+import contextlib
 import time
 import textwrap
 import os
@@ -32,6 +33,7 @@ from utils.dock_functions import *
 import pandas as pd
 import multiprocessing as mp
 from joblib import Parallel, delayed, load
+import joblib
 import sys
 from functools import reduce
 import pickle
@@ -45,9 +47,29 @@ from itertools import product, chain
 from functools import partialmethod
 filterwarnings('ignore')
 warnings.simplefilter(action='ignore', category=FutureWarning)
+pd.options.mode.chained_assignment = None
+#warnings.simplefilter(action='ignore', category=SettingWithCopyWarning)
 
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
+
+@contextlib.contextmanager
+def tqdm_joblib(tqdm_object):
+    """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+
+    def tqdm_print_progress(self):
+        if self.n_completed_tasks > tqdm_object.n:
+            n_completed = self.n_completed_tasks - tqdm_object.n
+            tqdm_object.update(n=n_completed)
+
+    original_print_progress = joblib.parallel.Parallel.print_progress
+    joblib.parallel.Parallel.print_progress = tqdm_print_progress
+
+    try:
+        yield tqdm_object
+    finally:
+        joblib.parallel.Parallel.print_progress = original_print_progress
+        tqdm_object.close()
 
 def get_ligand_id(ligand):
     ###########################################
@@ -560,6 +582,8 @@ def parse_args(args):
 
 def prepare_features(receptor_ligand_args):
 
+    filterwarnings('ignore')
+
     ###########################################
     # Function: Wrapper to prepare            #
     # all requested protein-ligand            #
@@ -896,8 +920,9 @@ def scoring(params):
     for batch_number, ligand_batch in enumerate(all_ligands_to_score):
 
         logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
-
-        multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
+        
+        with tqdm_joblib(tqdm(desc="Preparing features", total=len(ligand_batch))) as progress_bar:
+            multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
 
         multi_pose_features = pd.concat(multi_pose_features)
 
