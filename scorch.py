@@ -905,8 +905,6 @@ def scoring(params):
 
         multi_pose_features = scale_multipose_features(multi_pose_features)
 
-        multi_pose_features.sort_values(by='Ligand').to_csv('update.csv', index=False)
-
         models = prepare_models(params)
         models = list(models.items())
         models = [(m[0], m[1], multi_pose_features) for m in models]
