@@ -11,6 +11,7 @@
 
 
 # import all libraries and ignore tensorflow warnings
+from multiprocessing.spawn import prepare
 import xgboost as xgb
 import psutil
 import math
@@ -30,8 +31,8 @@ from utils.ecifs import *
 from utils.dock_functions import *
 import pandas as pd
 import multiprocessing as mp
+from joblib import Parallel, delayed
 import sys
-import joblib
 from functools import reduce
 import pickle
 import numpy as np
@@ -39,9 +40,11 @@ import shutil
 import json
 from tqdm import tqdm
 from warnings import filterwarnings
+import warnings
 from itertools import product, chain
 from functools import partialmethod
 filterwarnings('ignore')
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
@@ -629,7 +632,8 @@ def prepare_features(receptor_ligand_args):
 
     multi_pose_features['Receptor'] = receptor_basename
     multi_pose_features['Ligand'] = ligand_basename
-    multi_pose_features.to_pickle(os.path.join('utils','temp','binary_features',f'{ligand_basename}.pkl'))
+    
+    
     timedict['after_pickle'] = time.time()
 
     timedict['total_time'] = timedict['after_pickle'] - timedict['start']
@@ -641,6 +645,8 @@ def prepare_features(receptor_ligand_args):
         endtime = timedict[time]
         percentchunk = round((((endtime - begintime)/timedict['total_time'])*100), 4)
         # print(f'{time} : {percentchunk}')
+    
+    return multi_pose_features
 
 def scale_multipose_features(df):
 
@@ -932,20 +938,17 @@ def scoring(params):
     for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
         os.remove(os.path.join('utils','temp','binary_features',existing_file))
 
-    for arg in tqdm(receptor_ligand_args):
-        prepare_features(arg)
-
-    all_ligands_to_score = list_to_chunks(os.listdir(os.path.join('utils','temp','binary_features')),batches_needed)
-
-    ligand_scores = list()
+    all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
 
     logging.info('**************************************************************************\n')
 
-    for batch_number, feature_batch in enumerate(all_ligands_to_score):
+    for batch_number, ligand_batch in enumerate(all_ligands_to_score):
 
         logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
 
-        multi_pose_features = pd.concat([pd.read_pickle(os.path.join('utils','temp','binary_features',pickle_file)) for pickle_file in feature_batch])
+        multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
+
+        print(multi_pose_features)
 
         multi_pose_features = scale_multipose_features(multi_pose_features)
 
