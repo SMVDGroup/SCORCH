@@ -14,6 +14,7 @@
 import xgboost as xgb
 import psutil
 import math
+import time
 import textwrap
 import os
 os.environ['NUMEXPR_MAX_THREADS'] = '1'
@@ -111,6 +112,12 @@ def calculate_ecifs(lig, rec):
 
 def extract(lig, rec):
 
+    import time
+
+    timedict = dict()
+
+    timedict['start'] = time.time()
+
     ###########################################
     # Function: Get all descriptor features   #
     # for protein-ligand complex              #
@@ -122,13 +129,31 @@ def extract(lig, rec):
     ###########################################
     
     k = kier_flexibility(lig)
+
+    timedict['afterkier'] = time.time()
     bin = run_binana(lig,rec)
+    timedict['afterbin'] = time.time()
     ECIF = calculate_ecifs(lig, rec)
+    timedict['afterecifs'] = time.time()
     df = pd.concat([ECIF,bin],axis=1)
+    timedict['afterconcat'] = time.time()
     df['Kier Flexibility'] = k
+
+    timedict['total_time'] = timedict['afterconcat'] - timedict['start']
+
+    for i, time in enumerate(list(timedict.keys())):
+        if i == 0 or i == len(timedict.keys())-1:
+            continue
+        begintime = timedict[list(timedict.keys())[i - 1]]
+        endtime = timedict[time]
+        percentchunk = round((((endtime - begintime)/timedict['total_time'])*100), 4)
+        # print(f'{time} : {percentchunk}')
+
     return df
 
 def transform_df(df):
+
+    # TODO move scaling outside loop
 
     ###########################################
     # Function: Condense and scale descriptor #
@@ -148,10 +173,10 @@ def transform_df(df):
     scaler_58 = reference_headers.get('for_scaler_58')
     headers_58 = reference_headers.get('492_models_58')
 
-    df = df[scaler_58]
-    scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
-    scaled = scaler.transform(df)
-    df[df.columns] = scaled
+    #df = df[scaler_58]
+    #scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
+    #scaled = scaler.transform(df)
+    #df[df.columns] = scaled
     df = df[headers_58]
 
     return df
@@ -403,6 +428,12 @@ def parse_args(args):
 
 def prepare_features(receptor_ligand_args):
 
+    import time
+
+    timedict = dict()
+
+    timedict['start'] = time.time()
+
     ###########################################
     # Function: Wrapper to prepare            #
     # all requested protein-ligand            #
@@ -429,12 +460,31 @@ def prepare_features(receptor_ligand_args):
     ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
     receptor_basename = os.path.basename(receptor_filepath)
 
+    timedict['after_parse'] = time.time()
+
     features = extract(ligand_pdbqt_block, receptor_filepath)
 
+    timedict['after_extract'] = time.time()
+
     multi_pose_features = transform_df(features)
+
+    timedict['after_transform'] = time.time()
+
     multi_pose_features['Receptor'] = receptor_basename
     multi_pose_features['Ligand'] = ligand_basename
     multi_pose_features.to_pickle(os.path.join('utils','temp','binary_features',f'{ligand_basename}.pkl'))
+    timedict['after_pickle'] = time.time()
+
+    timedict['total_time'] = timedict['after_pickle'] - timedict['start']
+
+    for i, time in enumerate(list(timedict.keys())):
+        if i == 0 or i == len(timedict.keys())-1:
+            continue
+        begintime = timedict[list(timedict.keys())[i - 1]]
+        endtime = timedict[time]
+        percentchunk = round((((endtime - begintime)/timedict['total_time'])*100), 4)
+        # print(f'{time} : {percentchunk}')
+        
 
 def score(models):
 
@@ -703,7 +753,7 @@ def scoring(params):
     for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
         os.remove(os.path.join('utils','temp','binary_features',existing_file))
 
-    for arg in receptor_ligand_args:
+    for arg in tqdm(receptor_ligand_args):
         prepare_features(arg)
 
     all_ligands_to_score = list_to_chunks(os.listdir(os.path.join('utils','temp','binary_features')),batches_needed)
