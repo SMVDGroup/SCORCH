@@ -44,9 +44,13 @@ filterwarnings('ignore')
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
 
-# context manager to allow joblib progress monitoring
 @contextlib.contextmanager
 def tqdm_joblib(tqdm_object):
+
+    """
+    Context manager to allow joblib
+    progress monitoring
+    """
 
     def tqdm_print_progress(self):
         if self.n_completed_tasks > tqdm_object.n:
@@ -74,25 +78,24 @@ def get_ligand_id(ligand):
     Ligand_ID = ligand.split('_pose')[0]
     return Ligand_ID
 
-def run_binana(lig, rec):
+def run_binana(ligand_pdbqt_block, receptor_filepath):
 
     """
     Function: Get BINANA descriptors for    
     protein-ligand complex                  
                                         
-    Inputs: BINANA parameters dictionary,   
-    ligand as a pdbqt string block,         
+    Inputs:  ligand as a pdbqt string block,         
     receptor pdbqt filepath                 
                                             
     Output: BINANA protein-ligand complex   
-    descriptor features as a DataFrame      
+    descriptor features as a dictionary     
     """
 
     # empty dictionary to populate with features
     binana_features = dict()
 
     # get dictionary of binana features
-    main_binana_out = binana.Binana(lig, rec).out
+    main_binana_out = binana.Binana(ligand_pdbqt_block, receptor_filepath).out
 
 
     # define the features we want
@@ -259,7 +262,7 @@ def run_binana(lig, rec):
     # return dictionary
     return binana_features
 
-def kier_flexibility(lig):
+def kier_flexibility(ligand_pdbqt_block):
 
     """
     Function: Calculate Kier flexibility    
@@ -270,10 +273,10 @@ def kier_flexibility(lig):
     Output: Kier flexibility                
     """
 
-    mol = kier.SmilePrep(lig)
+    mol = kier.SmilePrep(ligand_pdbqt_block)
     return kier.CalculateFlexibility(mol)
 
-def calculate_ecifs(lig, rec):
+def calculate_ecifs(ligand_pdbqt_block, receptor_filepath):
 
     """
     Function: Get ECIFs for protein-ligand  
@@ -286,29 +289,30 @@ def calculate_ecifs(lig, rec):
     descriptor features as a DataFrame      
     """
 
-    ECIF_data = GetECIF(rec, lig, distance_cutoff=6.0)
+    ECIF_data = GetECIF(receptor_filepath, ligand_pdbqt_block, distance_cutoff=6.0)
     ECIFHeaders = [header.replace(';','') for header in PossibleECIF]
     ECIF_data = dict(zip(ECIFHeaders,ECIF_data))
     ECIF_df = pd.DataFrame(ECIF_data,index=[0])
 
     return ECIF_df
 
-def extract(lig, rec):
+def extract(ligand_pdbqt_block, receptor_filepath):
 
     """
     Function: Get all descriptor features   
     for protein-ligand complex              
                                             
-    Inputs: User defined params dictionary  
+    Inputs: ligand as a pdbqt string block, 
+    receptor pdbqt filepath     
                                             
     Output: All protein-ligand complex      
     descriptor features as a DataFrame      
     """
     
-    k = kier_flexibility(lig)
-    bin = run_binana(lig,rec)
-    binana_df = pd.DataFrame([bin])
-    ECIF = calculate_ecifs(lig, rec)
+    k = kier_flexibility(ligand_pdbqt_block)
+    binana_dict = run_binana(ligand_pdbqt_block,receptor_filepath)
+    binana_df = pd.DataFrame([binana_dict])
+    ECIF = calculate_ecifs(ligand_pdbqt_block, receptor_filepath)
     df = pd.concat([ECIF,binana_df],axis=1)
     df['Kier Flexibility'] = k
 
@@ -336,7 +340,7 @@ def prune_df_headers(df):
 
     return df
 
-def multiple_pose_check(lig, pose_1):
+def multiple_pose_check(ligand_filepath, pose_1):
 
     """
     Function: Transform ligand.pdbqt        
@@ -349,7 +353,7 @@ def multiple_pose_check(lig, pose_1):
     """
 
     pdbqt_pose_blocks = list()
-    lig_text = open(lig, 'r').read()
+    lig_text = open(ligand_filepath, 'r').read()
     lig_poses = lig_text.split('MODEL')
     for pose in lig_poses:
         lines = pose.split('\n')
