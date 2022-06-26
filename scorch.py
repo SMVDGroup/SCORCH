@@ -821,7 +821,7 @@ def scoring(params):
 
         merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
 
-        with tqdm_joblib(tqdm(desc="Generating...", total=len(merged_pdb_args))) as progress_bar:
+        with tqdm_joblib(tqdm(desc="Converting...", total=len(merged_pdb_args))) as progress_bar:
             Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_arg) for pdb_arg in merged_pdb_args.items())
 
         pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
