@@ -31,7 +31,7 @@ from utils.ecifs import *
 from utils.dock_functions import *
 import pandas as pd
 import multiprocessing as mp
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, load
 import sys
 from functools import reduce
 import pickle
@@ -662,7 +662,7 @@ def scale_multipose_features(df):
         df[col] = 0
 
     df = df[scaler_58]
-    scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
+    scaler = load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
     scaled = scaler.transform(df)
     df[df.columns] = scaled
     df = df[headers_58]
@@ -940,6 +940,8 @@ def scoring(params):
 
     all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
 
+    ligand_scores = list()
+
     logging.info('**************************************************************************\n')
 
     for batch_number, ligand_batch in enumerate(all_ligands_to_score):
@@ -948,7 +950,7 @@ def scoring(params):
 
         multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
 
-        print(multi_pose_features)
+        multi_pose_features = pd.concat(multi_pose_features)
 
         multi_pose_features = scale_multipose_features(multi_pose_features)
 
