@@ -79,11 +79,6 @@ def run_binana(lig, rec):
 
     main_binana_out = binana.Binana(lig, rec).out
 
-    from pprint import pprint
-
-    pprint(main_binana_out)
-    
-
     keep_closest_contacts = ["2.5 (HD, OA)", 
                              "2.5 (HD, HD)", 
                              "2.5 (HD, N)", 
@@ -275,12 +270,6 @@ def calculate_ecifs(lig, rec):
 
 def extract(lig, rec):
 
-    import time
-
-    timedict = dict()
-
-    timedict['start'] = time.time()
-
     ###########################################
     # Function: Get all descriptor features   #
     # for protein-ligand complex              #
@@ -292,26 +281,11 @@ def extract(lig, rec):
     ###########################################
     
     k = kier_flexibility(lig)
-
-    timedict['afterkier'] = time.time()
     bin = run_binana(lig,rec)
     binana_df = pd.DataFrame([bin])
-    timedict['afterbin'] = time.time()
     ECIF = calculate_ecifs(lig, rec)
-    timedict['afterecifs'] = time.time()
     df = pd.concat([ECIF,binana_df],axis=1)
-    timedict['afterconcat'] = time.time()
     df['Kier Flexibility'] = k
-
-    timedict['total_time'] = timedict['afterconcat'] - timedict['start']
-
-    for i, time in enumerate(list(timedict.keys())):
-        if i == 0 or i == len(timedict.keys())-1:
-            continue
-        begintime = timedict[list(timedict.keys())[i - 1]]
-        endtime = timedict[time]
-        percentchunk = round((((endtime - begintime)/timedict['total_time'])*100), 4)
-        # print(f'{time} : {percentchunk}')
 
     return df
 
@@ -586,12 +560,6 @@ def parse_args(args):
 
 def prepare_features(receptor_ligand_args):
 
-    import time
-
-    timedict = dict()
-
-    timedict['start'] = time.time()
-
     ###########################################
     # Function: Wrapper to prepare            #
     # all requested protein-ligand            #
@@ -618,33 +586,14 @@ def prepare_features(receptor_ligand_args):
     ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
     receptor_basename = os.path.basename(receptor_filepath)
 
-    timedict['after_parse'] = time.time()
-
     features = extract(ligand_pdbqt_block, receptor_filepath)
-
-    timedict['after_extract'] = time.time()
 
     multi_pose_features = prune_df_headers(features)
 
     multi_pose_features.fillna(0, inplace=True)
 
-    timedict['after_transform'] = time.time()
-
     multi_pose_features['Receptor'] = receptor_basename
     multi_pose_features['Ligand'] = ligand_basename
-    
-    
-    timedict['after_pickle'] = time.time()
-
-    timedict['total_time'] = timedict['after_pickle'] - timedict['start']
-
-    for i, time in enumerate(list(timedict.keys())):
-        if i == 0 or i == len(timedict.keys())-1:
-            continue
-        begintime = timedict[list(timedict.keys())[i - 1]]
-        endtime = timedict[time]
-        percentchunk = round((((endtime - begintime)/timedict['total_time'])*100), 4)
-        # print(f'{time} : {percentchunk}')
     
     return multi_pose_features
 
@@ -926,7 +875,7 @@ def scoring(params):
     total_poses = len(receptor_ligand_args)
     estimated_ram_usage = (360540*total_poses) + 644792975
     available_ram = psutil.virtual_memory().total
-    safe_ram_available = available_ram*0.8
+    safe_ram_available = available_ram*0.08
     if estimated_ram_usage > safe_ram_available:
         batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
     else:
