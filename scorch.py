@@ -1,187 +1,369 @@
-#######################################################################
-# SCORCH script version 1.0 - Run python scoring.py -h for help    #
-#                                                                     #
-# Script Authors:                                                     #
-# @sammoneykyrle                                                      #
-# @milesmcgibbon                                                      #
-#                                                                     #
-# School of Biological Sciences                                       #
-# The University of Edinburgh                                         #
-#######################################################################
+"""
+SCORCH script version 1.0 - Run python scoring.py -h for help    
+                                                                    
+Script Authors:                                                     
+@sammoneykyrle                                                      
+@milesmcgibbon                                                      
+                                                                    
+School of Biological Sciences                                       
+The University of Edinburgh                                         
+"""
 
+#######################################################################
+# Imports
 
-# import all libraries and ignore tensorflow warnings
-import xgboost as xgb
-import psutil
-import math
-import textwrap
+# import os and set tensorflow verbosity
 import os
-os.environ['NUMEXPR_MAX_THREADS'] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import tensorflow as tf
-tf.get_logger().setLevel('ERROR')
-from tensorflow.keras.models import load_model
-from utils import binana
-from sys import platform
-from utils import kier
-import logging
-from utils.ecifs import *
-from utils.dock_functions import *
-import pandas as pd
-import multiprocessing as mp
+
+# import other libraries
 import sys
-import joblib
-from functools import reduce
-import pickle
-import numpy as np
-import shutil
+import math
 import json
+import psutil
+import shutil
+import pickle
+import logging
+import textwrap
+import contextlib
+import numpy as np
+import pandas as pd
 from tqdm import tqdm
+import xgboost as xgb
+import tensorflow as tf
+from utils.ecifs import *
+from functools import reduce
+from utils import binana, kier
+tf.get_logger().setLevel('ERROR')
+from utils.dock_functions import *
+from functools import partialmethod
 from warnings import filterwarnings
 from itertools import product, chain
-from functools import partialmethod
+from tensorflow.keras.models import load_model
+from joblib import Parallel, parallel, delayed, load
+
+#######################################################################
+# Global Variables
+
+# filter pandas warnings
 filterwarnings('ignore')
 
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
 
+#######################################################################
+# Functions
+
+@contextlib.contextmanager
+def tqdm_joblib(tqdm_object):
+
+    """
+    Context manager to allow joblib
+    progress monitoring
+    """
+
+    def tqdm_print_progress(self):
+        if self.n_completed_tasks > tqdm_object.n:
+            n_completed = self.n_completed_tasks - tqdm_object.n
+            tqdm_object.update(n=n_completed)
+
+    original_print_progress = parallel.Parallel.print_progress
+    parallel.Parallel.print_progress = tqdm_print_progress
+
+    try:
+        yield tqdm_object
+    finally:
+        parallel.Parallel.print_progress = original_print_progress
+        tqdm_object.close()
+
 def get_ligand_id(ligand):
-    ###########################################
-    # Function: Get ligand ID from pose scores#
-    #                                         #
-    # Inputs: Ligand pose name                #
-    #                                         #
-    # Output: Ligand ID base name             #
-    ###########################################
+    """
+    Function: Get ligand ID from pose scores
+                                            
+    Inputs: Ligand pose name                
+                                            
+    Output: Ligand ID base name             
+    """
 
     Ligand_ID = ligand.split('_pose')[0]
     return Ligand_ID
 
-def run_binana(params, lig, rec):
+def run_binana(ligand_pdbqt_block, receptor_filepath):
 
-    ###########################################
-    # Function: Get BINANA descriptors for    #
-    # protein-ligand complex                  #
-    #                                         #
-    # Inputs: BINANA parameters dictionary,   #
-    # ligand as a pdbqt string block,         #
-    # receptor pdbqt filepath                 #
-    #                                         #
-    # Output: BINANA protein-ligand complex   #
-    # descriptor features as a DataFrame      #
-    ###########################################
+    """
+    Function: Get BINANA descriptors for    
+    protein-ligand complex                  
+                                        
+    Inputs:  ligand as a pdbqt string block,         
+    receptor pdbqt filepath                 
+                                            
+    Output: BINANA protein-ligand complex   
+    descriptor features as a dictionary     
+    """
 
-    if params.okay_to_proceed() == False:
-        logging.critical(
-            "Error: You need to specify the ligand and receptor PDBQT files to analyze using\nthe -receptor and -ligand tags from the command line.\n"
-        )
-        sys.exit(0)
+    # empty dictionary to populate with features
+    binana_features = dict()
 
-    if params.error != "":
-        logging.warning("Warning: The following command-line parameters were not recognized:")
-        logging.warning(("   " + cmd_params.error + "\n"))
+    # get dictionary of binana features
+    main_binana_out = binana.Binana(ligand_pdbqt_block, receptor_filepath).out
 
-    output = binana.Binana(lig, rec, params).out
 
-    return binana.parse(output, 0)
+    # define the features we want
+    keep_closest_contacts = ["2.5 (HD, OA)", 
+                             "2.5 (HD, HD)", 
+                             "2.5 (HD, N)", 
+                             "2.5 (C, HD)", 
+                             "2.5 (OA, ZN)", 
+                             "2.5 (HD, ZN)", 
+                             "2.5 (A, HD)"]
+    
+    keep_close_contacts = ["4.0 (C, C)", 
+                           "4.0 (HD, OA)", 
+                           "4.0 (C, HD)", 
+                           "4.0 (C, N)", 
+                           "4.0 (A, C)",
+                           "4.0 (A, OA)", 
+                           "4.0 (N, OA)", 
+                           "4.0 (A, N)", 
+                           "4.0 (HD, N)", 
+                           "4.0 (HD, HD)", 
+                           "4.0 (A, HD)", 
+                           "4.0 (OA, OA)", 
+                           "4.0 (C, OA)", 
+                           "4.0 (N, N)",
+                           "4.0 (C, SA)", 
+                           "4.0 (HD, SA)", 
+                           "4.0 (OA, SA)", 
+                           "4.0 (N, SA)", 
+                           "4.0 (A, A)", 
+                           "4.0 (HD, S)", 
+                           "4.0 (S, ZN)", 
+                           "4.0 (N, ZN)", 
+                           "4.0 (HD, ZN)", 
+                           "4.0 (A, SA)", 
+                           "4.0 (OA, ZN)", 
+                           "4.0 (C, ZN)", 
+                           "4.0 (C, NA)", 
+                           "4.0 (NA, OA)", 
+                           "4.0 (HD, NA)", 
+                           "4.0 (N, NA)", 
+                           "4.0 (A, NA)", 
+                           "4.0 (BR, C)", 
+                           "4.0 (HD, P)", 
+                           "4.0 (F, N)", 
+                           "4.0 (F, HD)", 
+                           "4.0 (C, CL)", 
+                           "4.0 (CL, HD)"]
 
-def kier_flexibility(lig):
+    keep_ligand_atoms = ["LA N",
+                         "LA HD"]
+    
+    keep_elsums = [ "ElSum (C, C)",
+                    "ElSum (HD, OA)",
+                    "ElSum (C, HD)",
+                    "ElSum (C, N)",
+                    "ElSum (A, C)",
+                    "ElSum (A, OA)",
+                    "ElSum (N, OA)",
+                    "ElSum (A, N)",
+                    "ElSum (HD, HD)",
+                    "ElSum (A, HD)",
+                    "ElSum (OA, OA)",
+                    "ElSum (C, OA)",
+                    "ElSum (N, N)",
+                    "ElSum (C, SA)",
+                    "ElSum (HD, SA)",
+                    "ElSum (OA, SA)",
+                    "ElSum (N, SA)",
+                    "ElSum (A, A)",
+                    "ElSum (N, S)",
+                    "ElSum (HD, S)",
+                    "ElSum (OA, S)",
+                    "ElSum (A, SA)",
+                    "ElSum (C, NA)",
+                    "ElSum (NA, OA)",
+                    "ElSum (HD, NA)",
+                    "ElSum (N, NA)",
+                    "ElSum (A, NA)",
+                    "ElSum (BR, C)",
+                    "ElSum (HD, P)",
+                    "ElSum (OA, P)",
+                    "ElSum (N, P)",
+                    "ElSum (C, F)",
+                    "ElSum (F, N)",
+                    "ElSum (A, F)",
+                    "ElSum (CL, OA)",
+                    "ElSum (C, CL)",
+                    "ElSum (CL, N)",
+                    "ElSum (A, CL)"]
 
-    ###########################################
-    # Function: Calculate Kier flexibility    #
-    # for ligand                              #
-    #                                         #
-    # Inputs: ligand as a pdbqt string block  #
-    #                                         #
-    # Output: Kier flexibility                #
-    ###########################################
+    # add closest contacts to binana_features dict
+    for contact in keep_closest_contacts:
+        binana_name = contact.split('(')[-1].split(')')[0].replace(', ','_')
+        binana_features[contact] = main_binana_out['closest'].get(binana_name)
+    
+    # add close contacts to binana_features dict
+    for contact in keep_close_contacts:
+        binana_name = contact.split('(')[-1].split(')')[0].replace(', ','_')
+        binana_features[contact] = main_binana_out['close'].get(binana_name)
+    
+    # add ligand atoms to binana_features dict as binary tallies
+    for atom in keep_ligand_atoms:
+        binana_name = atom.split()[-1]
+        if main_binana_out['ligand_atoms'].get(binana_name) is None:
+            binana_features[atom] = 0
+        else:
+            binana_features[atom] = 1
+    
+    # add electrostatics to binana_features dict
+    for elsum in keep_elsums:
+        binana_name = elsum.split('(')[-1].split(')')[0].replace(', ','_')
+        binana_features[elsum] = main_binana_out['elsums'].get(binana_name)
 
-    mol = kier.SmilePrep(lig)
+    # add active site flexibility features to binana_features
+    binana_features["BPF ALPHA SIDECHAIN"] = main_binana_out['bpfs'].get("SIDECHAIN_ALPHA")
+    binana_features["BPF ALPHA BACKBONE"] = main_binana_out['bpfs'].get("BACKBONE_ALPHA")
+    binana_features["BPF BETA SIDECHAIN"] = main_binana_out['bpfs'].get("SIDECHAIN_BETA")
+    binana_features["BPF BETA BACKBONE"] = main_binana_out['bpfs'].get("BACKBONE_BETA")
+    binana_features["BPF OTHER SIDECHAIN"] = main_binana_out['bpfs'].get("SIDECHAIN_OTHER")
+    binana_features["BPF OTHER BACKBONE"] = main_binana_out['bpfs'].get("BACKBONE_OTHER")
+
+    # add hydrophobic features to binana_features
+    binana_features["HC ALPHA SIDECHAIN"] = main_binana_out['hydrophobics'].get("SIDECHAIN_ALPHA")
+    binana_features["HC ALPHA BACKBONE"] = main_binana_out['hydrophobics'].get("BACKBONE_ALPHA")
+    binana_features["HC BETA SIDECHAIN"] = main_binana_out['hydrophobics'].get("SIDECHAIN_BETA")
+    binana_features["HC BETA BACKBONE"] = main_binana_out['hydrophobics'].get("BACKBONE_BETA")
+    binana_features["HC OTHER SIDECHAIN"] = main_binana_out['hydrophobics'].get("SIDECHAIN_OTHER")
+    binana_features["HC OTHER BACKBONE"] = main_binana_out['hydrophobics'].get("BACKBONE_OTHER")
+
+    # add hydrogen bond features to binana_features
+    binana_features["HB ALPHA SIDECHAIN LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_SIDECHAIN_ALPHA")
+    binana_features["HB BETA SIDECHAIN LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_SIDECHAIN_BETA")
+    binana_features["HB BETA BACKBONE LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_BACKBONE_BETA")
+    binana_features["HB OTHER SIDECHAIN LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_SIDECHAIN_OTHER")
+    binana_features["HB OTHER BACKBONE LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_BACKBONE_OTHER")
+    binana_features["HB ALPHA SIDECHAIN RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_SIDECHAIN_ALPHA")
+    binana_features["HB ALPHA BACKBONE RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_BACKBONE_ALPHA")
+    binana_features["HB BETA SIDECHAIN RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_SIDECHAIN_BETA")
+    binana_features["HB BETA BACKBONE RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_BACKBONE_BETA")
+    binana_features["HB OTHER SIDECHAIN RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_SIDECHAIN_OTHER")
+    binana_features["HB OTHER BACKBONE RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_BACKBONE_OTHER")
+
+    # add salt bridge features to binana_features
+    binana_features["SB ALPHA"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_ALPHA")
+    binana_features["SB BETA"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_BETA")
+    binana_features["SB OTHER"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_OTHER")
+
+    # add aromatic stacking features to binana_features
+    binana_features["piStack ALPHA"] = main_binana_out['stacking'].get("STACKING ALPHA")
+    binana_features["piStack BETA"] = main_binana_out['stacking'].get("STACKING BETA")
+    binana_features["piStack OTHER"] = main_binana_out['stacking'].get("STACKING OTHER")
+    binana_features["tStack ALPHA"] = main_binana_out['t_stacking'].get("T-SHAPED_ALPHA")
+    binana_features["tStack BETA"] = main_binana_out['t_stacking'].get("T-SHAPED_BETA")
+    binana_features["tStack OTHER"] = main_binana_out['t_stacking'].get("T-SHAPED_OTHER")
+
+    # add cation pi features to binana_features
+    binana_features["catPi BETA LIGAND"] = main_binana_out['pi_cation'].get("PI-CATION_LIGAND-CHARGED_BETA")
+    binana_features["catPi OTHER LIGAND"] = main_binana_out['pi_cation'].get("PI-CATION_LIGAND-CHARGED_OTHER")
+
+    # add rotatable bond count to binana features
+    binana_features["nRot"] = main_binana_out['nrot']
+
+    # return dictionary
+    return binana_features
+
+def kier_flexibility(ligand_pdbqt_block):
+
+    """
+    Function: Calculate Kier flexibility    
+    for ligand                              
+                                            
+    Inputs: ligand as a pdbqt string block  
+                                            
+    Output: Kier flexibility                
+    """
+
+    mol = kier.SmilePrep(ligand_pdbqt_block)
     return kier.CalculateFlexibility(mol)
 
-def calculate_ecifs(lig, rec):
+def calculate_ecifs(ligand_pdbqt_block, receptor_filepath):
 
-    ###########################################
-    # Function: Get ECIFs for protein-ligand  #
-    # complex                                 #
-    #                                         #
-    # Inputs: ligand as a pdbqt string block, #
-    # receptor pdbqt filepath                 #
-    #                                         #
-    # Output: ECIF protein-ligand complex     #
-    # descriptor features as a DataFrame      #
-    ###########################################
+    """
+    Function: Get ECIFs for protein-ligand  
+    complex                                 
+                                            
+    Inputs: ligand as a pdbqt string block, 
+    receptor pdbqt filepath                 
+                                            
+    Output: ECIF protein-ligand complex     
+    descriptor features as a DataFrame      
+    """
 
-    ECIF_data = GetECIF(rec, lig, distance_cutoff=6.0)
+    ECIF_data = GetECIF(receptor_filepath, ligand_pdbqt_block, distance_cutoff=6.0)
     ECIFHeaders = [header.replace(';','') for header in PossibleECIF]
     ECIF_data = dict(zip(ECIFHeaders,ECIF_data))
     ECIF_df = pd.DataFrame(ECIF_data,index=[0])
 
     return ECIF_df
 
-def extract(params):
+def extract(ligand_pdbqt_block, receptor_filepath):
 
-    ###########################################
-    # Function: Get all descriptor features   #
-    # for protein-ligand complex              #
-    #                                         #
-    # Inputs: User defined params dictionary  #
-    #                                         #
-    # Output: All protein-ligand complex      #
-    # descriptor features as a DataFrame      #
-    ###########################################
-
-    lig = params.params["ligand"]
-    rec = params.params["receptor"]
-    k = kier_flexibility(lig)
-    bin = run_binana(params,lig,rec)
-    ECIF = calculate_ecifs(lig, rec)
-    df = pd.concat([ECIF,bin],axis=1)
+    """
+    Function: Get all descriptor features   
+    for protein-ligand complex              
+                                            
+    Inputs: ligand as a pdbqt string block, 
+    receptor pdbqt filepath     
+                                            
+    Output: All protein-ligand complex      
+    descriptor features as a DataFrame      
+    """
+    
+    k = kier_flexibility(ligand_pdbqt_block)
+    binana_dict = run_binana(ligand_pdbqt_block,receptor_filepath)
+    binana_df = pd.DataFrame([binana_dict])
+    ECIF = calculate_ecifs(ligand_pdbqt_block, receptor_filepath)
+    df = pd.concat([ECIF,binana_df],axis=1)
     df['Kier Flexibility'] = k
+
     return df
 
-def transform_df(df):
+def prune_df_headers(df):
 
-    ###########################################
-    # Function: Condense and scale descriptor #
-    # features for model input                #
-    #                                         #
-    # Inputs: Full Dataframe of               #
-    # protein-ligand complex descriptors,     #
-    # boolean for single pose model type,     #
-    # boolean for further condensation with   #
-    # principle component analysis            #
-    #                                         #
-    # Output: DataFrame of features for model #
-    # input                                   #
-    ###########################################
+    """
+    Function: Condense and features for     
+    model input                             
+                                            
+    Inputs: Full Dataframe of               
+    protein-ligand complex descriptors,     
+    boolean for single pose model type,     
+    boolean for further condensation with   
+    principle component analysis            
+                                            
+    Output: DataFrame of features for model 
+    input                                   
+    """
 
     reference_headers = json.load(open(os.path.join('utils','params','features.json')))
-    scaler_58 = reference_headers.get('for_scaler_58')
     headers_58 = reference_headers.get('492_models_58')
-
-    df = df[scaler_58]
-    scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
-    scaled = scaler.transform(df)
-    df[df.columns] = scaled
     df = df[headers_58]
 
     return df
 
-def multiple_pose_check(lig, pose_1):
+def multiple_pose_check(ligand_filepath, pose_1):
 
-    ###########################################
-    # Function: Transform ligand.pdbqt        #
-    # poses/models into pdbqt string blocks   #
-    #                                         #
-    # Inputs: ligand.pdbqt filepath           #
-    #                                         #
-    # Output: List of model/pose pdbqt string #
-    # blocks                                  #
-    ###########################################
+    """
+    Function: Transform ligand.pdbqt        
+    poses/models into pdbqt string blocks   
+                                            
+    Inputs: ligand.pdbqt filepath           
+                                            
+    Output: List of model/pose pdbqt string 
+    blocks                                  
+    """
 
     pdbqt_pose_blocks = list()
-    lig_text = open(lig, 'r').read()
+    lig_text = open(ligand_filepath, 'r').read()
     lig_poses = lig_text.split('MODEL')
     for pose in lig_poses:
         lines = pose.split('\n')
@@ -200,16 +382,16 @@ def run_networks(df, model_file, model_name):
 
     models_to_load = model_file
 
-    ###########################################
-    # Function: Get prediction from MLP model #
-    # for protein-ligand complex              #
-    #                                         #
-    # Inputs: Number of networks as integer,  #
-    # condensed protein-ligand complex        #
-    # features as DataFrame                   #
-    #                                         #
-    # Output: Float prediction                #
-    ###########################################
+    """
+    Function: Get prediction from MLP model 
+    for protein-ligand complex              
+                                            
+    Inputs: Number of networks as integer,  
+    condensed protein-ligand complex        
+    features as DataFrame                   
+                                            
+    Output: Float prediction                
+    """
 
 
     predictions = pd.DataFrame()
@@ -227,81 +409,36 @@ def run_networks(df, model_file, model_name):
 
 def run_xgboost_models(df):
 
-    ###########################################
-    # Function: Get prediction from XGB model #
-    # for protein-ligand complex              #
-    #                                         #
-    # Inputs: Condensed protein-ligand        #
-    # complex features as DataFrame,          #
-    # boolean for single pose model           #
-    #                                         #
-    # Output: Float prediction                #
-    ###########################################
+    """
+    Function: Get prediction from XGB model 
+    for protein-ligand complex              
+                                            
+    Inputs: Condensed protein-ligand        
+    complex features as DataFrame,          
+    boolean for single pose model           
+                                            
+    Output: Float prediction                
+    """
 
     global xgboost_models
     dtest = xgb.DMatrix(df, feature_names=df.columns)
     prediction = xgboost_models.predict(dtest)
     return prediction
 
-def test(params):
-
-    ###########################################
-    # Function: Wrapper to score              #
-    # single protein-ligand complex/pose      #
-    #                                         #
-    # Inputs: User defined params dictionary  #
-    #                                         #
-    # Output: Float single prediction or      #
-    # consensus mean prediction from all      #
-    # three models                            #
-    ###########################################
-
-    cmd_params = binana.CommandLineParameters(params['binana_params'].copy())
-    features = extract(cmd_params)
-    results = []
-
-    if params['ff_nn'] == True:
-        df = transform_df(features)
-        mlp_result = run_networks(params['num_networks'],df,'ff_nn')
-        results.append(mlp_result)
-
-    if params['wd_nn'] == True:
-        df = transform_df(features)
-        mlp_result = run_networks(params['num_networks'],df,'wd_nn')
-        results.append(mlp_result)
-
-    if params['xgboost_model'] == True:
-        df = transform_df(features)
-        xgb_result = run_xgboost_models(df)
-        results.append(xgb_result)
-
-    return np.mean(results)
-
-def load_all_dfs_from_pickle(pickle_file):
-    df_list = list()
-    with open(pickle_file, 'rb') as df_stack:
-        while True:
-            try:
-                sub_df = pickle.load(df_stack)
-                df_list.append(sub_df)
-            except EOFError:
-                break
-    return df_list
-
 
 def binary_concat(dfs, headers):
 
-    ###########################################
-    # Function: Concatenate list of           #
-    # dataframes into a single dataframe by   #
-    # sequentially writing to a single binary #
-    # file (removes pd.concat bottleneck)     #
-    #                                         #
-    # Inputs: List of dataframes, dataframe   #
-    # headers as a list                       #
-    #                                         #
-    # Output: Single combined dataframe       #
-    ###########################################
+    """
+    Function: Concatenate list of           
+    dataframes into a single dataframe by   
+    sequentially writing to a single binary 
+    file (removes pd.concat bottleneck)     
+                                            
+    Inputs: List of dataframes, dataframe   
+    headers as a list                       
+                                            
+    Output: Single combined dataframe       
+    """
 
     total_rows = 0
     if not os.path.isdir(os.path.join('utils','temp')):
@@ -324,14 +461,14 @@ def binary_concat(dfs, headers):
 
 def parse_module_args(args_dict):
 
-    ###########################################
-    # Function: Parse user arguments when     #
-    # script is imported as a module          #
-    #                                         #
-    # Inputs: User arguments as a dictionary  #
-    #                                         #
-    # Output: Populated params dictionary     #
-    ###########################################
+    """
+    Function: Parse user arguments when     
+    script is imported as a module          
+                                            
+    Inputs: User arguments as a dictionary  
+                                            
+    Output: Populated params dictionary     
+    """
 
 
     command_input = list()
@@ -352,14 +489,14 @@ def parse_module_args(args_dict):
 
 def parse_args(args):
 
-    ###########################################
-    # Function: Parse user defined command    #
-    # line arguments                          #
-    #                                         #
-    # Inputs: Command line arguments          #
-    #                                         #
-    # Output: Populated params dictionary     #
-    ###########################################
+    """
+    Function: Parse user defined command    
+    line arguments                          
+                                            
+    Inputs: Command line arguments          
+                                            
+    Output: Populated params dictionary     
+    """
 
     params = {}
 
@@ -454,63 +591,207 @@ def parse_args(args):
             logging.critical('Run "python scoring.py -h" for usage instructions')
             sys.exit()
 
-
-
     return params
+
+def prepare_and_dock_inputs(params):
+
+    dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
+
+    if params['ref_lig'] is None:
+        if params['center'] is None and params['range'] is None:
+            logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- supplying a reference ligand")
+            sys.exit()
+        else:
+            try:
+                coords = (float(params['center'][0]),
+                            float(params['center'][1]),
+                            float(params['center'][2]),
+                            float(params['range'][0]),
+                            float(params['range'][1]),
+                            float(params['range'][2]))
+            except:
+                logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
+                sys.exit()
+    else:
+        coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
+
+    if not os.path.isdir(os.path.join('utils','temp','pdb_files')):
+        os.makedirs(os.path.join('utils','temp','pdb_files'))
+        os.makedirs(os.path.join('utils','temp','pdbqt_files'))
+        os.makedirs(os.path.join('utils','temp','docked_pdbqt_files'))
+
+    pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
+    for pdb in pdbs:
+        os.remove(pdb)
+
+    pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+    for pdbqt in pdbqts:
+        os.remove(pdbqt)
+
+    docked_pdbqts = get_filepaths(os.path.join('utils','temp','docked_pdbqt_files',''))
+    for docked_pdbqt in docked_pdbqts:
+        os.remove(docked_pdbqt)
+
+    smi_dict = get_smiles(params['ligand'])
+
+    logging.info('Generating 3D pdbs from SMILES...')
+
+    with tqdm_joblib(tqdm(desc="Generating...", total=len(smi_dict))) as progress_bar:
+        Parallel(n_jobs=params['threads'])(delayed(make_pdbs_from_smiles)(smi) for smi in smi_dict.items())
+
+    pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
+
+    logging.info('Converting pdbs to pdbqts...')
+
+    merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
+
+    with tqdm_joblib(tqdm(desc="Converting...", total=len(merged_pdb_args))) as progress_bar:
+        Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_arg) for pdb_arg in merged_pdb_args.items())
+
+    pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+
+    if sys.platform.lower() == 'darwin':
+        os_name = 'mac'
+    elif 'linux' in sys.platform.lower():
+        os_name = 'linux'
+
+    logging.info("Docking pdbqt ligands...")
+    for pdbqt in tqdm(pdbqts):
+        dock_file(
+                    os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
+                    params['receptor'],
+                    pdbqt,
+                    *coords,
+                    dock_settings['gwovina_settings']['exhaustiveness'],
+                    dock_settings['gwovina_settings']['num_wolves'],
+                    dock_settings['gwovina_settings']['num_modes'],
+                    dock_settings['gwovina_settings']['energy_range'],
+                    outfile=os.path.join(f'{stem_path}','utils','temp','docked_pdbqt_files',f'{os.path.split(pdbqt)[1]}')
+                    )
+
+
+    if '.' in params['ligand']:
+        docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
+    else:
+        docked_ligands_folder = os.path.basename(params['ligand'])
+
+    docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
+
+
+    params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
+    receptors = [params['receptor'] for i in range(len(params['ligand']))]
+    params['receptor'] = receptors
+
+    if not os.path.isdir('docked_ligands'):
+        os.mkdir('docked_ligands')
+    if not os.path.isdir(docked_ligands_path):
+        os.makedirs(docked_ligands_path)
+
+    for file in params['ligand']:
+        shutil.copy(file, docked_ligands_path)   
+    
+    return params, smi_dict
+
+def parse_ligand_poses(params):
+
+    poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
+
+    if params['pose_1']:
+        poses = [pose[0] for pose in poses]
+        receptor_ligand_args = list(zip(params['receptor'], params['ligand'], poses))
+    else:
+        receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
+        receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
+    
+    return receptor_ligand_args
+
+def calculate_batches_needed(receptor_ligand_args):
+
+    total_poses = len(receptor_ligand_args)
+    estimated_ram_usage = (360540*total_poses) + 644792975
+    available_ram = psutil.virtual_memory().total
+    safe_ram_available = available_ram*0.8
+
+    if estimated_ram_usage > safe_ram_available:
+        batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
+    else:
+        batches_needed = 1
+
+    return batches_needed
 
 def prepare_features(receptor_ligand_args):
 
-    ###########################################
-    # Function: Wrapper to prepare            #
-    # all requested protein-ligand            #
-    # complexes/poses for scoring             #
-    #                                         #
-    # Inputs: User defined params dictionary  #
-    # (as global),                            #
-    # dictionary of paired ligand/receptor    #
-    # filepaths                               #
-    #                                         #
-    # Output: Writes results as row to output #
-    # csv file                                #
-    ###########################################
-    params = receptor_ligand_args[1]
-    datastore_chunk_id = receptor_ligand_args[2]
-    receptor_ligand_args = receptor_ligand_args[0]
+    filterwarnings('ignore')
 
+    """
+    Function: Wrapper to prepare            
+    all requested protein-ligand            
+    complexes/poses for scoring             
+                                            
+    Inputs: User defined params dictionary  
+    (as global),                            
+    dictionary of paired ligand/receptor    
+    filepaths                               
+                                            
+    Output: Writes results as row to output 
+    csv file                                
+    """
 
-    receptor = receptor_ligand_args[0]
-    ligand = receptor_ligand_args[1]
+    ligand_pose_number = receptor_ligand_args[2][0]
+    ligand_pdbqt_block = receptor_ligand_args[2][1]
 
-    lig_block = receptor_ligand_args[2]
-    head, name = os.path.split(ligand)
-    pose_number = lig_block[0]
-    lig_block = lig_block[1]
+    receptor_filepath = receptor_ligand_args[0]
+    ligand_filepath = receptor_ligand_args[1]
+    ligand_basename = os.path.basename(ligand_filepath)
+    ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
+    receptor_basename = os.path.basename(receptor_filepath)
 
-    ligand_name = name.replace('.pdbqt', pose_number)
-    receptor_name = os.path.split(receptor)[-1]
-    params['binana_params'][1] = receptor
-    params['binana_params'][3] = lig_block
-    cmd_params = binana.CommandLineParameters(params['binana_params'].copy())
+    features = extract(ligand_pdbqt_block, receptor_filepath)
 
-    features = extract(cmd_params)
+    multi_pose_features = prune_df_headers(features)
 
-    multi_pose_features = transform_df(features)
-    multi_pose_features['Receptor'] = receptor_name
-    multi_pose_features['Ligand'] = ligand_name
-    multi_pose_features.to_pickle(os.path.join('utils','temp','binary_features',f'lig_{datastore_chunk_id}.pkl'))
+    multi_pose_features.fillna(0, inplace=True)
+
+    multi_pose_features['Receptor'] = receptor_basename
+    multi_pose_features['Ligand'] = ligand_basename
+    
+    return multi_pose_features
+
+def scale_multipose_features(df):
+
+    reference_headers = json.load(open(os.path.join('utils','params','features.json')))
+    scaler_58 = reference_headers.get('for_scaler_58')
+    headers_58 = reference_headers.get('492_models_58')
+
+    ligands, receptors = df['Ligand'], df['Receptor']
+
+    missing_columns = list(set(scaler_58) - set(list(df)))
+
+    for col in missing_columns:
+        df[col] = 0
+
+    df = df[scaler_58]
+    scaler = load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
+    scaled = scaler.transform(df)
+    df[df.columns] = scaled
+    df = df[headers_58]
+
+    df['Ligand'], df['Receptor'] = ligands, receptors
+
+    return df
 
 def score(models):
 
-    ###########################################
-    # Function: Score supplied ligands with   #
-    # an individual model                     #
-    #                                         #
-    # Inputs: Tuple of (model_name,           #
-    #                   model_binary_file,    #
-    #                   feature dataframes)   #
-    #                                         #
-    # Output: Dataframe of model predictions  #
-    ###########################################
+    """
+    Function: Score supplied ligands with   
+    an individual model                     
+                                            
+    Inputs: Tuple of (model_name,           
+                      model_binary_file,    
+                      feature dataframes)   
+                                            
+    Output: Dataframe of model predictions  
+    """
 
     model_name = models[0]
 
@@ -533,38 +814,17 @@ def score(models):
 
     return results
 
-def multiprocess_wrapper(function, items, threads):
-
-    ###########################################
-    # Function: Parallelise scoring           #
-    # protein/ligand complexes                #
-    #                                         #
-    # Inputs: Function to parallelise         #
-    # (def score),                            #
-    # list of tuples as function input,       #
-    # number of threads to parallelise across #
-    #                                         #
-    # Output: List of returned results        #
-    ###########################################
-
-    processes = min(threads, mp.cpu_count())
-    with mp.Pool(processes) as p:
-        results = list(tqdm(p.imap(function, items), total=len(items)))
-        p.close()
-        p.join()
-    return results
-
 def print_intro(params):
 
-    ###########################################
-    # Function: Prints chosen arguments to    #
-    # stdout                                  #
-    #                                         #
-    # Inputs: User command line parameters    #
-    # dictionary                              #
-    #                                         #
-    # Output: None                            #
-    ###########################################
+    """
+    Function: Prints chosen arguments to    
+    stdout                                  
+                                            
+    Inputs: User command line parameters    
+    dictionary                              
+                                            
+    Output: None                            
+    """
 
 
     logging.info('\n')
@@ -587,16 +847,16 @@ def print_intro(params):
 
 def prepare_models(params):
 
-    ###########################################
-    # Function: Loads machine-learning model  #
-    # binaries                                #
-    #                                         #
-    # Inputs: User command line parameters    #
-    # dictionary                              #
-    #                                         #
-    # Output: Dictionary of {model_name:      #
-    #                        model_binary}    #
-    ###########################################
+    """
+    Function: Loads machine-learning model  
+    binaries                                
+                                            
+    Inputs: User command line parameters    
+    dictionary                              
+                                            
+    Output: Dictionary of {model_name:      
+                           model_binary}    
+    """
 
 
     logging.info('**************************************************************************\n')
@@ -632,203 +892,53 @@ def prepare_models(params):
 
     return models
 
-def scoring(params):
+def score_ligand_batch(params, ligand_batch, model_binaries):
 
-    ###########################################
-    # Function: Score protein-ligand          #
-    # complex(es)                             #
-    #                                         #
-    # Inputs: User command line parameters    #
-    # dictionary                              #
-    #                                         #
-    # Output: Dataframe of scoring function   #
-    # predictions                             #
-    ###########################################
+    with tqdm_joblib(tqdm(desc="Preparing features", total=len(ligand_batch))) as progress_bar:
+        multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
 
-    print_intro(params)
+    multi_pose_features = pd.concat(multi_pose_features)
 
-    if len(params['ligand']) == 1:
-        binana_ligand = params['ligand'][0]
-        binana_receptor = params['receptor']
-    else:
-        binana_ligand = os.path.dirname(params['ligand'][0]) + '/'
-        binana_receptor = params['receptor'][0]
+    multi_pose_features = scale_multipose_features(multi_pose_features)
 
-    params['binana_params'] = ['-receptor', binana_receptor, '-ligand', binana_ligand]
+    models = [(m[0], m[1], multi_pose_features) for m in model_binaries]
 
-    if params['dock']:
-
-        dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
-
-        if params['ref_lig'] is None:
-            if params['center'] is None and params['range'] is None:
-                logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- supplying a reference ligand")
-                sys.exit()
-            else:
-                try:
-                    coords = (float(params['center'][0]),
-                              float(params['center'][1]),
-                              float(params['center'][2]),
-                              float(params['range'][0]),
-                              float(params['range'][1]),
-                              float(params['range'][2]))
-                except:
-                    logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
-                    sys.exit()
-        else:
-            coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
-
-        if not os.path.isdir(os.path.join('utils','temp','pdb_files')):
-            os.makedirs(os.path.join('utils','temp','pdb_files'))
-            os.makedirs(os.path.join('utils','temp','pdbqt_files'))
-            os.makedirs(os.path.join('utils','temp','docked_pdbqt_files'))
-
-        pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
-        for pdb in pdbs:
-            os.remove(pdb)
-
-        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
-        for pdbqt in pdbqts:
-            os.remove(pdbqt)
-
-        docked_pdbqts = get_filepaths(os.path.join('utils','temp','docked_pdbqt_files',''))
-        for docked_pdbqt in docked_pdbqts:
-            os.remove(docked_pdbqt)
-
-        smi_dict = get_smiles(params['ligand'])
-
-        logging.info('Generating 3D pdbs from SMILES...')
-        fixes = multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
-
-        pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
-        logging.info('Converting pdbs to pdbqts...')
-        merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
-
-        multiprocess_wrapper(autodock_convert, merged_pdb_args.items(), params['threads'])
-
-        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
-
-        if platform.lower() == 'darwin':
-            os_name = 'mac'
-        elif 'linux' in platform.lower():
-            os_name = 'linux'
-
-        logging.info("Docking pdbqt ligands...")
-        for pdbqt in tqdm(pdbqts):
-            dock_file(
-                      os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
-                      params['receptor'],
-                      pdbqt,
-                      *coords,
-                      dock_settings['gwovina_settings']['exhaustiveness'],
-                      dock_settings['gwovina_settings']['num_wolves'],
-                      dock_settings['gwovina_settings']['num_modes'],
-                      dock_settings['gwovina_settings']['energy_range'],
-                      outfile=os.path.join(f'{stem_path}','utils','temp','docked_pdbqt_files',f'{os.path.split(pdbqt)[1]}')
-                      )
-
-
-        if '.' in params['ligand']:
-            docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
-        else:
-            docked_ligands_folder = os.path.basename(params['ligand'])
-
-        docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
-
-
-        params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
-        receptors = [params['receptor'] for i in range(len(params['ligand']))]
-        params['receptor'] = receptors
-
-        if not os.path.isdir('docked_ligands'):
-            os.mkdir('docked_ligands')
-        if not os.path.isdir(docked_ligands_path):
-            os.makedirs(docked_ligands_path)
-
-        for file in params['ligand']:
-            shutil.copy(file, docked_ligands_path)
-
-
-    poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
-
-    if params['pose_1']:
-        poses = [pose[0] for pose in poses]
-        receptor_ligand_args = list(zip(params['receptor'], params['ligand'], poses))
-    else:
-        receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
-        receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
-
-    receptor_ligand_args  = list(map(lambda x: (x, params), receptor_ligand_args))
-    receptor_ligand_args = [(r[0], r[1]) for r in receptor_ligand_args]
-
-    total_poses = len(receptor_ligand_args)
-    estimated_ram_usage = (360540*total_poses) + 644792975
-    available_ram = psutil.virtual_memory().total
-    safe_ram_available = available_ram*0.8
-    if estimated_ram_usage > safe_ram_available:
-        batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
-    else:
-        batches_needed = 1
-
-    receptor_ligand_args = [(r[0], r[1], chunk_id) for r, chunk_id in zip(receptor_ligand_args, range(len(receptor_ligand_args)))]
-
-    if not os.path.isdir(os.path.join('utils','temp','binary_features')):
-        os.makedirs(os.path.join('utils','temp','binary_features'))
-
-    for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
-        os.remove(os.path.join('utils','temp','binary_features',existing_file))
-
-    multiprocess_wrapper(prepare_features, receptor_ligand_args, params['threads'])
-
-    all_ligands_to_score = list_to_chunks(os.listdir(os.path.join('utils','temp','binary_features')),batches_needed)
-
-    ligand_scores = list()
+    model_results = list()
 
     logging.info('**************************************************************************\n')
 
-    for batch_number, feature_batch in enumerate(all_ligands_to_score):
+    for model in models:
+        model_results.append(score(model))
+        logging.info('Done!')
 
-        logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
+    logging.info('**************************************************************************\n')
 
-        multi_pose_features = pd.concat([pd.read_pickle(os.path.join('utils','temp','binary_features',pickle_file)) for pickle_file in feature_batch])
+    merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
 
-        models = prepare_models(params)
-        models = list(models.items())
-        models = [(m[0], m[1], multi_pose_features) for m in models]
+    multi_models = ['xgboost_model',
+                    'ff_nn_models_average',
+                    'wd_nn_models_average']
 
-        model_results = list()
+    merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
+    max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
+    minimum_val = 1 - max_std
+    
+    merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
+    merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
 
-        for model in models:
-            model_results.append(score(model))
-            logging.info('Done!')
+    merged_results = merged_results[['Receptor',
+                                        'Ligand',
+                                        'SCORCH_pose_score',
+                                        'SCORCH_certainty']].copy()
 
+    merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
+    merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
 
-        logging.info('**************************************************************************\n')
+    del merged_results['Ligand']
 
-        merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
+    return merged_results
 
-        multi_models = ['xgboost_model',
-                        'ff_nn_models_average',
-                        'wd_nn_models_average']
-
-        merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
-        max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
-        minimum_val = 1 - max_std
-        maxmum_val = 1
-        merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
-        merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
-
-        merged_results = merged_results[['Receptor',
-                                         'Ligand',
-                                         'SCORCH_pose_score',
-                                         'SCORCH_certainty']].copy()
-
-        merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
-        merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
-
-        del merged_results['Ligand']
-
-        ligand_scores.append(merged_results)
+def create_final_results(params, ligand_scores):
 
     final_ligand_scores = pd.concat(ligand_scores)
     final_ligand_scores['SCORCH_score'] = final_ligand_scores.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
@@ -846,22 +956,79 @@ def scoring(params):
     else:
         final_ligand_scores = final_ligand_scores.sort_values(by=['SCORCH_score','SCORCH_pose_score'], ascending=False)
 
-    if params['dock']:
-        final_ligand_scores['Ligand_SMILE'] = final_ligand_scores['Ligand_ID'].map(smi_dict)
-
     numerics = list(final_ligand_scores.select_dtypes(include=[np.number]))
     final_ligand_scores[numerics] = final_ligand_scores[numerics].round(5)
 
-    for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
-        os.remove(os.path.join('utils','temp','binary_features',existing_file))
+    return final_ligand_scores
+
+def scoring(params):
+
+    """
+    Function: Score protein-ligand          
+    complex(es)                             
+                                            
+    Inputs: User command line parameters    
+    dictionary                              
+                                            
+    Output: Dataframe of scoring function   
+    predictions                             
+    """
+
+    print_intro(params)
+
+    if params['dock']:
+
+       params, smi_dict = prepare_and_dock_inputs(params)
+
+    receptor_ligand_args = parse_ligand_poses(params)
+
+    batches_needed = calculate_batches_needed(receptor_ligand_args)
+
+    all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
+
+    model_dict = prepare_models(params)
+    model_binaries = list(model_dict.items())
+
+    ligand_scores = list()
+
+    logging.info('**************************************************************************\n')
+
+    for batch_number, ligand_batch in enumerate(all_ligands_to_score):
+
+        logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
+        
+        merged_results = score_ligand_batch(params, ligand_batch, model_binaries)
+
+        ligand_scores.append(merged_results)
+
+    final_ligand_scores = create_final_results(params, ligand_scores)
+
+    if params['dock']:
+        final_ligand_scores['Ligand_SMILE'] = final_ligand_scores['Ligand_ID'].map(smi_dict)
 
     return final_ligand_scores
 
+#######################################################################
+# Main script
+
 if __name__ == "__main__":
 
+    # parse user arguments
     params = parse_args(sys.argv)
+
+    # score complexes
     scoring_function_results = scoring(params)
+
+    # output results
     if not params['out']:
+
+        # send to stdout if no outfile given
         sys.stdout.write(scoring_function_results.to_csv(index=False))
+
     else:
+
+        # otherwise save to user specified csv
         scoring_function_results.to_csv(params['out'], index=False)
+
+
+# scorch.py end

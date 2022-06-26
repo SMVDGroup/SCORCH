@@ -2515,7 +2515,25 @@ class Binana:
         return string
 
     # The meat of the class
-    def __init__(self, ligand_pdbqt_filename, receptor_pdbqt_filename, parameters):
+    def __init__(self, ligand_pdbqt_filename, receptor_pdbqt_filename):
+
+
+        parameters = {'close_contacts_dist1_cutoff': 2.5,
+                      'close_contacts_dist2_cutoff': 4.0, 
+                      'electrostatic_dist_cutoff': 4.0, 
+                      'active_site_flexibility_dist_cutoff': 4.0, 
+                      'hydrophobic_dist_cutoff': 4.0, 
+                      'hydrogen_bond_dist_cutoff': 4.0, 
+                      'hydrogen_bond_angle_cutoff': 40.0, 
+                      'pi_padding_dist': 0.75, 
+                      'pi_pi_interacting_dist_cutoff': 7.5, 
+                      'pi_stacking_angle_tolerance': 30.0, 
+                      'T_stacking_angle_tolerance': 30.0, 
+                      'T_stacking_closest_dist_cutoff': 5.0, 
+                      'cation_pi_dist_cutoff': 6.0, 
+                      'salt_bridge_dist_cutoff': 5.5,  
+                      'output_dir': '', 
+                      'output_file': ''}
 
         ligand = PDB()
         ligand.load_PDB(ligand_pdbqt_filename)
@@ -2557,7 +2575,7 @@ class Binana:
                 receptor_atom = receptor.all_atoms[receptor_atom_index]
 
                 dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
-                if dist < parameters.params["close_contacts_dist1_cutoff"]:
+                if dist < parameters["close_contacts_dist1_cutoff"]:
                     # less than 2.5 A
                     list_ligand_atom = [ligand_atom.atom_type, receptor_atom.atom_type]
                     self.hashtable_entry_add_one(
@@ -2571,7 +2589,7 @@ class Binana:
                         (ligand_atom.string_id(), receptor_atom.string_id())
                     )
 
-                elif dist < parameters.params["close_contacts_dist2_cutoff"]:
+                elif dist < parameters["close_contacts_dist2_cutoff"]:
                     # less than 4 A
                     list_ligand_atom = [ligand_atom.atom_type, receptor_atom.atom_type]
                     self.hashtable_entry_add_one(
@@ -2585,7 +2603,7 @@ class Binana:
                         (ligand_atom.string_id(), receptor_atom.string_id())
                     )
 
-                if dist < parameters.params["electrostatic_dist_cutoff"]:
+                if dist < parameters["electrostatic_dist_cutoff"]:
                     # calculate electrostatic energies for all less than 4 A
                     ligand_charge = ligand_atom.charge
                     receptor_charge = receptor_atom.charge
@@ -2599,7 +2617,7 @@ class Binana:
                         coulomb_energy,
                     )
 
-                if dist < parameters.params["active_site_flexibility_dist_cutoff"]:
+                if dist < parameters["active_site_flexibility_dist_cutoff"]:
                     # Now get statistics to judge active-site flexibility
                     flexibility_key = (
                         receptor_atom.SideChainOrBackBone()
@@ -2624,7 +2642,7 @@ class Binana:
                         active_site_flexibility, flexibility_key
                     )
 
-                if dist < parameters.params["hydrophobic_dist_cutoff"]:
+                if dist < parameters["hydrophobic_dist_cutoff"]:
                     # Now see if there's hydrophobic contacts (C-C contacts)
                     if ligand_atom.element == "C" and receptor_atom.element == "C":
                         hydrophobic_key = (
@@ -2641,7 +2659,7 @@ class Binana:
                             (ligand_atom.string_id(), receptor_atom.string_id())
                         )
 
-                if dist < parameters.params["hydrogen_bond_dist_cutoff"]:
+                if dist < parameters["hydrogen_bond_dist_cutoff"]:
                     # Now see if there's some sort of hydrogen bond between
                     # these two atoms. distance cutoff = 4, angle cutoff = 40.
                     # Note that this is liberal.
@@ -2696,7 +2714,7 @@ class Binana:
                                     * 180.0
                                     / math.pi
                                 )
-                                <= parameters.params["hydrogen_bond_angle_cutoff"]
+                                <= parameters["hydrogen_bond_angle_cutoff"]
                             ):
                                 hbonds_key = (
                                     "HDONOR_"
@@ -2732,7 +2750,7 @@ class Binana:
         # each pi ring. Think of this as adding in a VDW radius, or accounting
         # for poor crystal-structure resolution, or whatever you want to
         # justify it.
-        pi_padding = parameters.params[
+        pi_padding = parameters[
             "pi_padding_dist"
         ]
 
@@ -2752,7 +2770,7 @@ class Binana:
         for aromatic1 in ligand.aromatic_rings:
             for aromatic2 in receptor.aromatic_rings:
                 dist = aromatic1.center.dist_to(aromatic2.center)
-                if dist < parameters.params["pi_pi_interacting_dist_cutoff"]:
+                if dist < parameters["pi_pi_interacting_dist_cutoff"]:
                     # so there could be some pi-pi interactions. first, let's
                     # check for stacking interactions. Are the two pi's
                     # roughly parallel?
@@ -2778,9 +2796,9 @@ class Binana:
 
                     if (
                         math.fabs(angle_between_planes - 0)
-                        < parameters.params["pi_stacking_angle_tolerance"]
+                        < parameters["pi_stacking_angle_tolerance"]
                         or math.fabs(angle_between_planes - 180)
-                        < parameters.params["pi_stacking_angle_tolerance"]
+                        < parameters["pi_stacking_angle_tolerance"]
                     ):
                         # so they're more or less parallel, it's probably
                         # pi-pi stackingoutput_dir now, pi-pi are not usually
@@ -2868,9 +2886,9 @@ class Binana:
 
                     elif (
                         math.fabs(angle_between_planes - 90)
-                        < parameters.params["T_stacking_angle_tolerance"]
+                        < parameters["T_stacking_angle_tolerance"]
                         or math.fabs(angle_between_planes - 270)
-                        < parameters.params["T_stacking_angle_tolerance"]
+                        < parameters["T_stacking_angle_tolerance"]
                     ):
                         # so they're more or less perpendicular, it's probably
                         # a pi-edge interaction
@@ -2894,7 +2912,7 @@ class Binana:
 
                         if (
                             min_dist
-                            <= parameters.params["T_stacking_closest_dist_cutoff"]
+                            <= parameters["T_stacking_closest_dist_cutoff"]
                         ):
                             # so at their closest points, the two rings come
                             # within 5 A of each other.
@@ -2977,7 +2995,7 @@ class Binana:
                     # so only consider positive charges
                     if (
                         charged.coordinates.dist_to(aromatic.center)
-                        < parameters.params["cation_pi_dist_cutoff"]
+                        < parameters["cation_pi_dist_cutoff"]
                     ):
                         # distance cutoff based on "Cation-pi interactions in
                         # structural biology." project the charged onto the
@@ -3039,7 +3057,7 @@ class Binana:
                     # so only consider positive charges
                     if (
                         charged.coordinates.dist_to(aromatic.center)
-                        < parameters.params["cation_pi_dist_cutoff"]
+                        < parameters["cation_pi_dist_cutoff"]
                     ):
                         # distance cutoff based on "Cation-pi interactions in
                         # structural biology." project the charged onto the
@@ -3102,7 +3120,7 @@ class Binana:
                     # so they have oppositve charges
                     if (
                         ligand_charge.coordinates.dist_to(receptor_charge.coordinates)
-                        < parameters.params["salt_bridge_dist_cutoff"]
+                        < parameters["salt_bridge_dist_cutoff"]
                     ):
                         # 4  is good cutoff for salt bridges according to
                         # "Close-Range Electrostatic Interactions in
@@ -3150,294 +3168,13 @@ class Binana:
                             )
                         )
 
-        # Now save the files
-        # preface = "REMARK "
-        preface = ""
-        # if an output directory is specified, and it doesn't exist, create it
-        if parameters.params["output_dir"] != "":
-            if not os.path.exists(parameters.params["output_dir"]):
-                os.mkdir(parameters.params["output_dir"])
+        # custom output for SCORCH
 
-        """'# old output format
-        output = ""
-        output = output + "Atom-type pair counts within " + str(parameters.params['close_contacts_dist1_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_two_half) + "\n"
-        output = output + "Atom-type pair counts within " + str(parameters.params['close_contacts_dist2_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_four) + "\n"
-        output = output + "Ligand atom types: " + str(ligand_atom_types) + "\n"
-        output = output + "Electrostatic energy by atom-type pair, in J/mol: " + str(ligand_receptor_atom_type_pairs_electrostatic) + "\n"
-        output = output + "Number of rotatable bonds in ligand: " + str(ligand.rotateable_bonds_count) + "\n"
-        output = output + "Active-site flexibility: " + str(active_site_flexibility) + "\n"
-        output = output + "HBonds: " + str(hbonds) + "\n"
-        output = output + "Hydrophobic contacts (C-C): " + str(hydrophobics) + "\n"
-        output = output + "pi interactions: " + str(PI_interactions) + "\n"
-        output = output + "Salt bridges: " + str(salt_bridges) + "\n"
-
-        print output"""
-
-        output = ""
-
-        # restate the parameters
-        output = output + preface + "Command-line parameters used:" + "\n"
-        output = (
-            output
-            + preface
-            + "                 Parameter              |            Value           "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   -------------------------------------|----------------------------"
-            + "\n"
-        )
-
-        for key in list(parameters.params.keys()):
-            value = str(parameters.params[key])
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key, 37)
-                + "| "
-                + self.center(value, 27)
-                + "\n"
-            )
-
-        # a description of the analysis
-
-        output = output + preface + "" + "\n"
-        output = (
-            output
-            + preface
-            + "Atom-type pair counts within "
-            + str(parameters.params["close_contacts_dist1_cutoff"])
-            + " angstroms:"
-            + "\n"
-        )
-        output = output + preface + "    Atom Type | Atom Type | Count" + "\n"
-        output = output + preface + "   -----------|-----------|-------" + "\n"
-        for key in ligand_receptor_atom_type_pairs_less_than_two_half:
-            value = ligand_receptor_atom_type_pairs_less_than_two_half[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 11)
-                + "|"
-                + self.center(key[1], 11)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in close_contacts_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "\n\n"
-        output = (
-            output
-            + preface
-            + "Atom-type pair counts within "
-            + str(parameters.params["close_contacts_dist2_cutoff"])
-            + " angstroms:"
-            + "\n"
-        )
-        output = output + preface + "    Atom Type | Atom Type | Count" + "\n"
-        output = output + preface + "   -----------|-----------|-------" + "\n"
-        for key in ligand_receptor_atom_type_pairs_less_than_four:
-            value = ligand_receptor_atom_type_pairs_less_than_four[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 11)
-                + "|"
-                + self.center(key[1], 11)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in contacts_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Ligand atom types:" + "\n"
-        output = output + preface + "    Atom Type " + "\n"
-        output = output + preface + "   -----------" + "\n"
-        for key in ligand_atom_types:
-            output = output + preface + "   " + self.center(key, 11) + "\n"
-
-        output = output + preface + "" + "\n"
-        output = (
-            output
-            + preface
-            + "Summed electrostatic energy by atom-type pair, in J/mol:"
-            + "\n"
-        )
-        output = output + preface + "    Atom Type | Atom Type | Energy (J/mol)" + "\n"
-        output = output + preface + "   -----------|-----------|----------------" + "\n"
-        for key in ligand_receptor_atom_type_pairs_electrostatic:
-            value = ligand_receptor_atom_type_pairs_electrostatic[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 11)
-                + "|"
-                + self.center(key[1], 11)
-                + "|"
-                + self.center(str(value), 16)
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = (
-            output
-            + preface
-            + "Number of rotatable bonds in the ligand: "
-            + str(ligand.rotateable_bonds_count)
-            + "\n"
-        )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Active-site flexibility:" + "\n"
-        output = (
-            output
-            + preface
-            + "    Sidechain/Backbone | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   --------------------|---------------------|-------"
-            + "\n"
-        )
-        for key in active_site_flexibility:
-            value = active_site_flexibility[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 20)
-                + "|"
-                + self.center(key[1], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Hydrogen bonds:" + "\n"
-        output = (
-            output
-            + preface
-            + "    Location of Donor | Sidechain/Backbone | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   -------------------|--------------------|---------------------|-------"
-            + "\n"
-        )
-        for key in hbonds:
-            value = hbonds[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[1], 19)
-                + "|"
-                + self.center(key[2], 20)
-                + "|"
-                + self.center(key[3], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in hbonds_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + " - "
-                + atom_pairs[2]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Hydrophobic contacts (C-C):" + "\n"
-        output = (
-            output
-            + preface
-            + "    Sidechain/Backbone | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   --------------------|---------------------|-------"
-            + "\n"
-        )
-        for key in hydrophobics:
-            value = hydrophobics[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 20)
-                + "|"
-                + self.center(key[1], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in hydrophobic_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
+        # these are the aromatics
         stacking = []
         t_shaped = []
         pi_cation = []
+
         for key in PI_interactions:
             value = PI_interactions[key]
             together = key + "_" + str(value)
@@ -3448,212 +3185,103 @@ class Binana:
             if "SHAPED" in together:
                 t_shaped.append(together)
 
-        output = output + preface + "" + "\n"
-        output = output + preface + "pi-pi stacking interactions:" + "\n"
-        output = output + preface + "    Secondary Structure | Count " + "\n"
-        output = output + preface + "   ---------------------|-------" + "\n"
-        for item in stacking:
-            item = item.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(item[1], 21)
-                + "|"
-                + self.center(item[2], 7)
-                + "\n"
-            )
+        # stacking
+        stacking_dict = dict()
+        for pc in stacking:
+            stack_name = '_'.join(pc.split('_')[:-1])
+            stacking_dict[stack_name] = pc.split('_')[-1]
+        
+        # t-shaped
+        t_shaped_dict = dict()
+        for pc in t_shaped:
+            stack_name = '_'.join(pc.split('_')[:-1])
+            t_shaped_dict[stack_name] = pc.split('_')[-1]
+        
+        # pi cations
+        pi_cation_dict = dict()
+        for pc in pi_cation:
+            stack_name = '_'.join(pc.split('_')[:-1])
+            pi_cation_dict[stack_name] = pc.split('_')[-1]
+        
+        # build outputs into nested dictionary
+        output = {'closest':ligand_receptor_atom_type_pairs_less_than_two_half,
+                  'close':ligand_receptor_atom_type_pairs_less_than_four,
+                  'elsums':ligand_receptor_atom_type_pairs_electrostatic,
+                  'bpfs':active_site_flexibility,
+                  'hbonds':hbonds,
+                  'hydrophobics':hydrophobics,
+                  'ligand_atoms':ligand_atom_types,
+                  'stacking':stacking_dict,
+                  't_stacking':t_shaped_dict,
+                  'pi_cation':pi_cation_dict,
+                  'salt_bridges':salt_bridges,
+                  'nrot':ligand.rotateable_bonds_count
+                  }
 
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in pi_stacking_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "T-stacking (face-to-edge) interactions:" + "\n"
-        output = output + preface + "    Secondary Structure | Count " + "\n"
-        output = output + preface + "   ---------------------|-------" + "\n"
-        for item in t_shaped:
-            # need to check
-            item = item.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(item[1], 21)
-                + "|"
-                + self.center(item[2], 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in T_stacking_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Cation-pi interactions:" + "\n"
-        output = (
-            output
-            + preface
-            + "    Which residue is charged? | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   ---------------------------|---------------------|-------"
-            + "\n"
-        )
-        for item in pi_cation:
-            # need to check
-            item = item.split("_")
-            item2 = item[1].split("-")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(item2[0], 27)
-                + "|"
-                + self.center(item[2], 21)
-                + "|"
-                + self.center(item[3], 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in pi_cat_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Salt Bridges:" + "\n"
-        output = output + preface + "    Secondary Structure | Count " + "\n"
-        output = output + preface + "   ---------------------|-------" + "\n"
-        for key in salt_bridges:
-            value = salt_bridges[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[1], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in salt_bridge_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        pdb_close_contacts.set_resname("CCN")
-        pdb_contacts.set_resname("CON")
-        pdb_contacts_alpha_helix.set_resname("ALP")
-        pdb_contacts_beta_sheet.set_resname("BET")
-        pdb_contacts_other_2nd_structure.set_resname("OTH")
-        pdb_back_bone.set_resname("BAC")
-        pdb_side_chain.set_resname("SID")
-        pdb_hydrophobic.set_resname("HYD")
-        pdb_hbonds.set_resname("HBN")
-        pdb_pistack.set_resname("PIS")
-        pdb_pi_T.set_resname("PIT")
-        pdb_pi_cat.set_resname("PIC")
-        pdb_salt_bridges.set_resname("SAL")
-        ligand.set_resname("LIG")
-
+        # assign the output
         self.out = output
 
         '''
-        if parameters.params["output_dir"] != "":
+        if parameters["output_dir"] != "":
             # so an output directory has been specified. Write the pdb files
             # out separately
 
             pdb_close_contacts.save_PDB(
-                parameters.params["output_dir"] + "/close_contacts.pdb"
+                parameters["output_dir"] + "/close_contacts.pdb"
             )
-            pdb_contacts.save_PDB(parameters.params["output_dir"] + "/contacts.pdb")
+            pdb_contacts.save_PDB(parameters["output_dir"] + "/contacts.pdb")
             pdb_contacts_alpha_helix.save_PDB(
-                parameters.params["output_dir"] + "/contacts_alpha_helix.pdb"
+                parameters["output_dir"] + "/contacts_alpha_helix.pdb"
             )
             pdb_contacts_beta_sheet.save_PDB(
-                parameters.params["output_dir"] + "/contacts_beta_sheet.pdb"
+                parameters["output_dir"] + "/contacts_beta_sheet.pdb"
             )
             pdb_contacts_other_2nd_structure.save_PDB(
-                parameters.params["output_dir"]
+                parameters["output_dir"]
                 + "/contacts_other_secondary_structure.pdb"
             )
-            pdb_back_bone.save_PDB(parameters.params["output_dir"] + "/back_bone.pdb")
-            pdb_side_chain.save_PDB(parameters.params["output_dir"] + "/side_chain.pdb")
+            pdb_back_bone.save_PDB(parameters["output_dir"] + "/back_bone.pdb")
+            pdb_side_chain.save_PDB(parameters["output_dir"] + "/side_chain.pdb")
             pdb_hydrophobic.save_PDB(
-                parameters.params["output_dir"] + "/hydrophobic.pdb"
+                parameters["output_dir"] + "/hydrophobic.pdb"
             )
-            pdb_hbonds.save_PDB(parameters.params["output_dir"] + "/hydrogen_bonds.pdb")
+            pdb_hbonds.save_PDB(parameters["output_dir"] + "/hydrogen_bonds.pdb")
             pdb_pistack.save_PDB(
-                parameters.params["output_dir"] + "/pi_pi_stacking.pdb"
+                parameters["output_dir"] + "/pi_pi_stacking.pdb"
             )
-            pdb_pi_T.save_PDB(parameters.params["output_dir"] + "/T_stacking.pdb")
-            pdb_pi_cat.save_PDB(parameters.params["output_dir"] + "/cat_pi.pdb")
+            pdb_pi_T.save_PDB(parameters["output_dir"] + "/T_stacking.pdb")
+            pdb_pi_cat.save_PDB(parameters["output_dir"] + "/cat_pi.pdb")
             pdb_salt_bridges.save_PDB(
-                parameters.params["output_dir"] + "/salt_bridges.pdb"
+                parameters["output_dir"] + "/salt_bridges.pdb"
             )
-            ligand.save_PDB(parameters.params["output_dir"] + "/ligand.pdb")
-            receptor.save_PDB(parameters.params["output_dir"] + "/receptor.pdb")
+            ligand.save_PDB(parameters["output_dir"] + "/ligand.pdb")
+            receptor.save_PDB(parameters["output_dir"] + "/receptor.pdb")
 
-            f = open(parameters.params["output_dir"] + "log.txt", "w")
+            f = open(parameters["output_dir"] + "log.txt", "w")
             f.write(output.replace("REMARK ", ""))
             f.close()
 
-            f = open(parameters.params["output_dir"] + "state.vmd", "w")
+            f = open(parameters["output_dir"] + "state.vmd", "w")
             f.write(self.vmd_state_file())
             f.close()
             # TODO: JY put json_file() call here?
         if (
-            parameters.params["output_file"] == ""
-            and parameters.params["output_dir"] == ""
+            parameters["output_file"] == ""
+            and parameters["output_dir"] == ""
         ):
             # so you're not outputing to either a file or a directory
             print((output.replace("REMARK ", "")))
 
-        if parameters.params["output_file"] != "":
+        if parameters["output_file"] != "":
             # so it's writing to a single file.
 
             # first, make an explaination.
 
             explain = (
                 'The residue named "CCN" illustrates close contacts where the protein and ligand atoms come within '
-                + str(parameters.params["close_contacts_dist1_cutoff"])
+                + str(parameters["close_contacts_dist1_cutoff"])
                 + ' of each other. "CON" illustrates close contacts where the protein and ligand atoms come within '
-                + str(parameters.params["close_contacts_dist2_cutoff"])
+                + str(parameters["close_contacts_dist2_cutoff"])
                 + ' of each other. "ALP", "BET", and "OTH" illustrates receptor contacts whose respective protein residues have the alpha-helix, beta-sheet, or "other" secondary structure. "BAC" and "SID" illustrate receptor contacts that are part of the protein backbone and sidechain, respectively. "HYD" illustrates hydrophobic contacts between the protein and ligand. "HBN" illustrates hydrogen bonds. "SAL" illustrates salt bridges. "PIS" illustrates pi-pi stacking interactions, "PIT" illustrates T-stacking interactions, and "PIC" illustrates cation-pi interactions. Protein residue names are unchanged, but the ligand residue is now named "LIG".'
             )
 
@@ -3711,7 +3339,7 @@ class Binana:
                 + "TER\n"
             )
 
-            f = open(parameters.params["output_file"], "w")
+            f = open(parameters["output_file"], "w")
             f.write(output)
             f.close()
         '''
@@ -4462,164 +4090,3 @@ class CommandLineParameters:
             return True
         else:
             return False
-
-'''
-Functions for reading binana output to a dataframe
-'''
-
-def read_binana(binana_stats, close_contacts_distance_header, medium_contacts_distance_header):
-
-    # define headers for parsing
-    file_headers = [f'Atom-type pair counts within {close_contacts_distance_header} angstroms:',
-               f'Atom-type pair counts within {medium_contacts_distance_header} angstroms:',
-               'Ligand atom types:',
-               'Summed electrostatic energy by atom-type pair, in J/mol:',
-               'Number of rotatable bonds in the ligand:',
-               'Active-site flexibility:',
-               'Hydrogen bonds:',
-               'Hydrophobic contacts (C-C):',
-               'pi-pi stacking interactions:',
-               'T-stacking (face-to-edge) interactions:',
-               'Cation-pi interactions:',
-               'Salt Bridges:']
-
-    # define dictionary for populating
-    tables = dict()
-
-    # extract markdown tables from text file and add to tables dict
-    for index, header in enumerate(file_headers):
-        column_names = dict()
-        if header == 'Number of rotatable bonds in the ligand:':
-            table = binana_stats.split(header)[1].split(file_headers[index + 1])[0].strip().lstrip()
-        elif index < (len(file_headers) - 1):
-            table = binana_stats.split(header)[1].split(file_headers[index + 1])[0].strip().lstrip()
-            table = table.split('Raw data')[0]
-            table = io.StringIO(table)
-            table = pd.read_table(table, sep="|")
-            for column in list(table):
-                column_names[column] = column.lstrip().rstrip()
-                table = table.loc[~table[column].str.contains('----')]
-            table.rename(columns = column_names, inplace = True)
-        else:
-            table = binana_stats.split(header)[1].strip().lstrip()
-            table = table.split('Raw data')[0]
-            table = io.StringIO(table)
-            table = pd.read_table(table, sep="|")
-            for column in list(table):
-                column_names[column] = column.lstrip().rstrip()
-                table = table.loc[~table[column].str.contains('----')]
-            table.rename(columns = column_names, inplace = True)
-        tables[header] = table
-
-    return tables
-
-def parse(output, dist_increase):
-
-    close_contacts_distance_header = str(2.5 + dist_increase)
-
-    medium_contacts_distance_header = str(4.0 + dist_increase)
-
-    tables = read_binana(output, close_contacts_distance_header, medium_contacts_distance_header)
-
-    df_headers = [
-                f'{close_contacts_distance_header} (HD, OA)', f'{close_contacts_distance_header} (HD, HD)', f'{close_contacts_distance_header} (HD, N)', f'{close_contacts_distance_header} (C, HD)', f'{close_contacts_distance_header} (MN, OA)', f'{close_contacts_distance_header} (HD, MN)', f'{close_contacts_distance_header} (OA, ZN)', f'{close_contacts_distance_header} (HD, ZN)', f'{close_contacts_distance_header} (A, HD)', f'{close_contacts_distance_header} (HD, NA)', f'{close_contacts_distance_header} (CA, HD)', f'{close_contacts_distance_header} (CA, OA)', f'{close_contacts_distance_header} (HD, MG)', f'{close_contacts_distance_header} (HD, P)', f'{close_contacts_distance_header} (F, HD)', f'{close_contacts_distance_header} (BR, HD)', f'{close_contacts_distance_header} (C, F)', f'{close_contacts_distance_header} (OA, OA)', f'{close_contacts_distance_header} (NA, OA)', f'{close_contacts_distance_header} (HD, SA)', f'{close_contacts_distance_header} (MG, OA)', f'{close_contacts_distance_header} (FE, HD)', f'{close_contacts_distance_header} (FE, OA)', f'{close_contacts_distance_header} (FE, N)', f'{close_contacts_distance_header} (A, N)', f'{close_contacts_distance_header} (N, N)', f'{close_contacts_distance_header} (N, OA)', f'{close_contacts_distance_header} (C, N)', f'{close_contacts_distance_header} (C, OA)', f'{close_contacts_distance_header} (CL, N)', f'{close_contacts_distance_header} (CL, HD)', f'{close_contacts_distance_header} (C, CL)', f'{close_contacts_distance_header} (A, A)', f'{close_contacts_distance_header} (A, C)', f'{close_contacts_distance_header} (A, OA)', f'{close_contacts_distance_header} (CL, OA)', f'{close_contacts_distance_header} (NA, ZN)', f'{close_contacts_distance_header} (C, C)', f'{close_contacts_distance_header} (C, SA)', f'{close_contacts_distance_header} (HD, S)', f'{close_contacts_distance_header} (HD, NI)', f'{close_contacts_distance_header} (NI, OA)', f'{close_contacts_distance_header} (CA, NA)', f'{close_contacts_distance_header} (C, MG)', f'{close_contacts_distance_header} (CO, OA)', f'{close_contacts_distance_header} (CO, HD)', f'{close_contacts_distance_header} (OA, SA)', f'{close_contacts_distance_header} (F, OA)', f'{close_contacts_distance_header} (C, NA)', f'{close_contacts_distance_header} (N, SA)', f'{close_contacts_distance_header} (F, ZN)', f'{close_contacts_distance_header} (F, N)', f'{close_contacts_distance_header} (A, F)', f'{close_contacts_distance_header} (MG, N)', f'{close_contacts_distance_header} (A, CL)', f'{close_contacts_distance_header} (C, ZN)', f'{close_contacts_distance_header} (N, ZN)', f'{close_contacts_distance_header} (MN, NA)', f'{close_contacts_distance_header} (MG, NA)', f'{close_contacts_distance_header} (A, NA)', f'{close_contacts_distance_header} (F, MG)', f'{close_contacts_distance_header} (K, OA)', f'{close_contacts_distance_header} (K, P)', f'{close_contacts_distance_header} (A, ZN)', f'{close_contacts_distance_header} (FE, NA)', f'{close_contacts_distance_header} (CU, OA)', f'{close_contacts_distance_header} (CU, NA)', f'{close_contacts_distance_header} (CU, HD)', f'{close_contacts_distance_header} (C, MN)', f'{close_contacts_distance_header} (N, NI)', f'{close_contacts_distance_header} (NA, NI)', f'{close_contacts_distance_header} (A, MG)', f'{close_contacts_distance_header} (CO, NA)', f'{close_contacts_distance_header} (MG, P)', f'{close_contacts_distance_header} (NA, NA)', f'{close_contacts_distance_header} (MN, N)', f'{close_contacts_distance_header} (CL, SA)', f'{close_contacts_distance_header} (A, CA)', f'{close_contacts_distance_header} (A, SA)', f'{close_contacts_distance_header} (OA, P)', f'{close_contacts_distance_header} (N, NA)', f'{close_contacts_distance_header} (F, SA)', f'{close_contacts_distance_header} (C, FE)', f'{close_contacts_distance_header} (A, FE)', f'{close_contacts_distance_header} (F, FE)', f'{close_contacts_distance_header} (MG, SA)', f'{close_contacts_distance_header} (N, P)', f'{close_contacts_distance_header} (C, CA)', f'{close_contacts_distance_header} (BR, N)', f'{close_contacts_distance_header} (BR, OA)', f'{close_contacts_distance_header} (C, CO)', f'{close_contacts_distance_header} (CO, N)', f'{close_contacts_distance_header} (A, MN)', f'{close_contacts_distance_header} (CL, FE)', f'{close_contacts_distance_header} (A, BR)', f'{close_contacts_distance_header} (SA, ZN)', f'{close_contacts_distance_header} (HD, K)', f'{close_contacts_distance_header} (CD, HD)', f'{close_contacts_distance_header} (CA, N)', f'{close_contacts_distance_header} (C, K)', f'{close_contacts_distance_header} (OA, S)', f'{close_contacts_distance_header} (HD, I)', f'{close_contacts_distance_header} (MN, P)', f'{close_contacts_distance_header} (C, P)', f'{close_contacts_distance_header} (FE, SA)', f'{close_contacts_distance_header} (F, MN)', f'{close_contacts_distance_header} (SA, SA)', f'{close_contacts_distance_header} (K, N)', f'{close_contacts_distance_header} (C, NI)', f'{close_contacts_distance_header} (BR, C)', f'{close_contacts_distance_header} (CD, OA)', f'{close_contacts_distance_header} (CL, MG)', f'{close_contacts_distance_header} (CL, ZN)', f'{close_contacts_distance_header} (S, ZN)', f'{close_contacts_distance_header} (NA, P)', f'{close_contacts_distance_header} (N, S)', f'{close_contacts_distance_header} (C, S)', f'{close_contacts_distance_header} (NA, SA)', f'{close_contacts_distance_header} (CU, N)', f'{close_contacts_distance_header} (A, P)', f'{close_contacts_distance_header} (A, CO)', f'{close_contacts_distance_header} (A, NI)', f'{close_contacts_distance_header} (C, CU)', f'{close_contacts_distance_header} (BR, MN)', f'{close_contacts_distance_header} (I, N)', f'{close_contacts_distance_header} (CL, MN)', f'{close_contacts_distance_header} (K, NA)', f'{close_contacts_distance_header} (BR, SA)', f'{close_contacts_distance_header} (A, K)', f'{close_contacts_distance_header} (CA, P)', f'{medium_contacts_distance_header} (C, C)', f'{medium_contacts_distance_header} (HD, OA)', f'{medium_contacts_distance_header} (C, HD)', f'{medium_contacts_distance_header} (C, N)', f'{medium_contacts_distance_header} (A, C)', f'{medium_contacts_distance_header} (A, OA)', f'{medium_contacts_distance_header} (N, OA)', f'{medium_contacts_distance_header} (A, N)', f'{medium_contacts_distance_header} (HD, N)', f'{medium_contacts_distance_header} (HD, HD)', f'{medium_contacts_distance_header} (A, HD)', f'{medium_contacts_distance_header} (OA, OA)', f'{medium_contacts_distance_header} (C, OA)', f'{medium_contacts_distance_header} (N, N)', f'{medium_contacts_distance_header} (MN, OA)', f'{medium_contacts_distance_header} (C, MN)', f'{medium_contacts_distance_header} (C, SA)', f'{medium_contacts_distance_header} (HD, SA)', f'{medium_contacts_distance_header} (OA, SA)', f'{medium_contacts_distance_header} (MN, SA)', f'{medium_contacts_distance_header} (HD, MN)', f'{medium_contacts_distance_header} (N, SA)', f'{medium_contacts_distance_header} (A, A)', f'{medium_contacts_distance_header} (N, S)', f'{medium_contacts_distance_header} (HD, S)', f'{medium_contacts_distance_header} (OA, S)', f'{medium_contacts_distance_header} (S, ZN)', f'{medium_contacts_distance_header} (N, ZN)', f'{medium_contacts_distance_header} (HD, ZN)', f'{medium_contacts_distance_header} (A, ZN)', f'{medium_contacts_distance_header} (A, SA)', f'{medium_contacts_distance_header} (SA, ZN)', f'{medium_contacts_distance_header} (OA, ZN)', f'{medium_contacts_distance_header} (C, S)', f'{medium_contacts_distance_header} (A, S)', f'{medium_contacts_distance_header} (C, ZN)', f'{medium_contacts_distance_header} (C, NA)', f'{medium_contacts_distance_header} (NA, OA)', f'{medium_contacts_distance_header} (NA, SA)', f'{medium_contacts_distance_header} (HD, NA)', f'{medium_contacts_distance_header} (N, NA)', f'{medium_contacts_distance_header} (A, NA)', f'{medium_contacts_distance_header} (C, CA)', f'{medium_contacts_distance_header} (CA, OA)', f'{medium_contacts_distance_header} (CA, N)', f'{medium_contacts_distance_header} (CA, HD)', f'{medium_contacts_distance_header} (BR, C)', f'{medium_contacts_distance_header} (BR, HD)', f'{medium_contacts_distance_header} (BR, OA)', f'{medium_contacts_distance_header} (BR, N)', f'{medium_contacts_distance_header} (C, P)', f'{medium_contacts_distance_header} (HD, P)', f'{medium_contacts_distance_header} (OA, P)', f'{medium_contacts_distance_header} (N, P)', f'{medium_contacts_distance_header} (A, P)', f'{medium_contacts_distance_header} (C, MG)', f'{medium_contacts_distance_header} (MG, N)', f'{medium_contacts_distance_header} (HD, MG)', f'{medium_contacts_distance_header} (MG, OA)', f'{medium_contacts_distance_header} (MG, P)', f'{medium_contacts_distance_header} (C, F)', f'{medium_contacts_distance_header} (F, N)', f'{medium_contacts_distance_header} (F, OA)', f'{medium_contacts_distance_header} (F, HD)', f'{medium_contacts_distance_header} (A, F)', f'{medium_contacts_distance_header} (NA, ZN)', f'{medium_contacts_distance_header} (CL, OA)', f'{medium_contacts_distance_header} (C, CL)', f'{medium_contacts_distance_header} (CL, N)', f'{medium_contacts_distance_header} (CL, HD)', f'{medium_contacts_distance_header} (A, CL)', f'{medium_contacts_distance_header} (A, BR)', f'{medium_contacts_distance_header} (MN, N)', f'{medium_contacts_distance_header} (A, MN)', f'{medium_contacts_distance_header} (F, MN)', f'{medium_contacts_distance_header} (CL, SA)', f'{medium_contacts_distance_header} (BR, SA)', f'{medium_contacts_distance_header} (CA, SA)', f'{medium_contacts_distance_header} (C, FE)', f'{medium_contacts_distance_header} (FE, OA)', f'{medium_contacts_distance_header} (FE, N)', f'{medium_contacts_distance_header} (FE, HD)', f'{medium_contacts_distance_header} (F, SA)', f'{medium_contacts_distance_header} (A, CA)', f'{medium_contacts_distance_header} (SA, SA)', f'{medium_contacts_distance_header} (C, NI)', f'{medium_contacts_distance_header} (MN, P)', f'{medium_contacts_distance_header} (F, ZN)', f'{medium_contacts_distance_header} (HD, NI)', f'{medium_contacts_distance_header} (NI, S)', f'{medium_contacts_distance_header} (NI, OA)', f'{medium_contacts_distance_header} (N, NI)', f'{medium_contacts_distance_header} (MG, NA)', f'{medium_contacts_distance_header} (CA, P)', f'{medium_contacts_distance_header} (CA, NA)', f'{medium_contacts_distance_header} (A, MG)', f'{medium_contacts_distance_header} (CL, ZN)', f'{medium_contacts_distance_header} (P, ZN)', f'{medium_contacts_distance_header} (CO, P)', f'{medium_contacts_distance_header} (C, CO)', f'{medium_contacts_distance_header} (CO, HD)', f'{medium_contacts_distance_header} (CO, OA)', f'{medium_contacts_distance_header} (CA, S)', f'{medium_contacts_distance_header} (NA, NI)', f'{medium_contacts_distance_header} (P, SA)', f'{medium_contacts_distance_header} (CL, MG)', f'{medium_contacts_distance_header} (CO, SA)', f'{medium_contacts_distance_header} (FE, NA)', f'{medium_contacts_distance_header} (FE, P)', f'{medium_contacts_distance_header} (A, CU)', f'{medium_contacts_distance_header} (C, CU)', f'{medium_contacts_distance_header} (A, FE)', f'{medium_contacts_distance_header} (MN, NA)', f'{medium_contacts_distance_header} (CL, FE)', f'{medium_contacts_distance_header} (F, FE)', f'{medium_contacts_distance_header} (CU, NA)', f'{medium_contacts_distance_header} (K, P)', f'{medium_contacts_distance_header} (K, OA)', f'{medium_contacts_distance_header} (C, K)', f'{medium_contacts_distance_header} (HD, K)', f'{medium_contacts_distance_header} (MG, SA)', f'{medium_contacts_distance_header} (S, SA)', f'{medium_contacts_distance_header} (FE, SA)', f'{medium_contacts_distance_header} (A, CO)', f'{medium_contacts_distance_header} (CO, N)', f'{medium_contacts_distance_header} (CU, N)', f'{medium_contacts_distance_header} (CU, HD)', f'{medium_contacts_distance_header} (CU, OA)', f'{medium_contacts_distance_header} (MG, S)', f'{medium_contacts_distance_header} (NI, SA)', f'{medium_contacts_distance_header} (A, NI)', f'{medium_contacts_distance_header} (CL, NI)', f'{medium_contacts_distance_header} (BR, MG)', f'{medium_contacts_distance_header} (CO, NA)', f'{medium_contacts_distance_header} (BR, MN)', f'{medium_contacts_distance_header} (NA, NA)', f'{medium_contacts_distance_header} (HD, I)', f'{medium_contacts_distance_header} (C, I)', f'{medium_contacts_distance_header} (I, OA)', f'{medium_contacts_distance_header} (BR, ZN)', f'{medium_contacts_distance_header} (F, MG)', f'{medium_contacts_distance_header} (NA, P)', f'{medium_contacts_distance_header} (CL, MN)', f'{medium_contacts_distance_header} (CO, S)', f'{medium_contacts_distance_header} (CA, F)', f'{medium_contacts_distance_header} (C, CD)', f'{medium_contacts_distance_header} (I, N)', f'{medium_contacts_distance_header} (CU, F)', f'{medium_contacts_distance_header} (FE, S)', f'{medium_contacts_distance_header} (A, I)', f'{medium_contacts_distance_header} (I, ZN)', f'{medium_contacts_distance_header} (I, SA)', f'{medium_contacts_distance_header} (A, K)', f'{medium_contacts_distance_header} (K, N)', f'{medium_contacts_distance_header} (CD, P)', f'{medium_contacts_distance_header} (CD, OA)', f'{medium_contacts_distance_header} (CD, HD)', f'{medium_contacts_distance_header} (MN, S)', f'{medium_contacts_distance_header} (F, K)', f'{medium_contacts_distance_header} (CL, NA)', f'{medium_contacts_distance_header} (CL, CU)', f'{medium_contacts_distance_header} (CO, F)', f'{medium_contacts_distance_header} (K, SA)', f'{medium_contacts_distance_header} (K, NA)', f'{medium_contacts_distance_header} (CU, SA)', f'{medium_contacts_distance_header} (A, CD)', f'{medium_contacts_distance_header} (CD, N)', f'{medium_contacts_distance_header} (CL, CO)', f'{medium_contacts_distance_header} (CA, CL)', f'{medium_contacts_distance_header} (F, NA)', f'{medium_contacts_distance_header} (HG, OA)', f'{medium_contacts_distance_header} (HD, HG)', f'{medium_contacts_distance_header} (NA, S)', f'{medium_contacts_distance_header} (I, MG)', 'LA C', 'LA OA', 'LA N', 'LA HD', 'LA SA', 'LA A', 'LA S', 'LA NA', 'LA BR', 'LA P', 'LA F', 'LA CL', 'LA I', 'ElSum (C, C)', 'ElSum (HD, OA)', 'ElSum (C, HD)', 'ElSum (C, N)', 'ElSum (A, C)', 'ElSum (A, OA)', 'ElSum (N, OA)', 'ElSum (A, N)', 'ElSum (HD, N)', 'ElSum (HD, HD)', 'ElSum (A, HD)', 'ElSum (OA, OA)', 'ElSum (C, OA)', 'ElSum (N, N)', 'ElSum (MN, OA)', 'ElSum (C, MN)', 'ElSum (C, SA)', 'ElSum (HD, SA)', 'ElSum (OA, SA)', 'ElSum (MN, SA)', 'ElSum (HD, MN)', 'ElSum (N, SA)', 'ElSum (A, A)', 'ElSum (N, S)', 'ElSum (HD, S)', 'ElSum (OA, S)', 'ElSum (S, ZN)', 'ElSum (OA, ZN)', 'ElSum (N, ZN)', 'ElSum (HD, ZN)', 'ElSum (A, ZN)', 'ElSum (A, SA)', 'ElSum (SA, ZN)', 'ElSum (C, S)', 'ElSum (A, S)', 'ElSum (C, ZN)', 'ElSum (C, NA)', 'ElSum (NA, OA)', 'ElSum (NA, SA)', 'ElSum (HD, NA)', 'ElSum (N, NA)', 'ElSum (A, NA)', 'ElSum (C, CA)', 'ElSum (CA, OA)', 'ElSum (CA, N)', 'ElSum (CA, HD)', 'ElSum (BR, C)', 'ElSum (BR, HD)', 'ElSum (BR, OA)', 'ElSum (BR, N)', 'ElSum (C, P)', 'ElSum (HD, P)', 'ElSum (OA, P)', 'ElSum (N, P)', 'ElSum (A, P)', 'ElSum (C, MG)', 'ElSum (MG, N)', 'ElSum (HD, MG)', 'ElSum (MG, OA)', 'ElSum (MG, P)', 'ElSum (C, F)', 'ElSum (F, N)', 'ElSum (F, HD)', 'ElSum (F, OA)', 'ElSum (A, F)', 'ElSum (NA, ZN)', 'ElSum (CL, OA)', 'ElSum (C, CL)', 'ElSum (CL, N)', 'ElSum (CL, HD)', 'ElSum (A, CL)', 'ElSum (A, BR)', 'ElSum (MN, N)', 'ElSum (A, MN)', 'ElSum (F, MN)', 'ElSum (CL, SA)', 'ElSum (BR, SA)', 'ElSum (CA, SA)', 'ElSum (C, FE)', 'ElSum (FE, OA)', 'ElSum (FE, N)', 'ElSum (FE, HD)', 'ElSum (F, SA)', 'ElSum (A, CA)', 'ElSum (SA, SA)', 'ElSum (C, NI)', 'ElSum (MN, P)', 'ElSum (F, ZN)', 'ElSum (HD, NI)', 'ElSum (NI, S)', 'ElSum (NI, OA)', 'ElSum (N, NI)', 'ElSum (MG, NA)', 'ElSum (CA, P)', 'ElSum (CA, NA)', 'ElSum (A, MG)', 'ElSum (CL, ZN)', 'ElSum (P, ZN)', 'ElSum (CO, P)', 'ElSum (C, CO)', 'ElSum (CO, OA)', 'ElSum (CO, HD)', 'ElSum (CA, S)', 'ElSum (NA, NI)', 'ElSum (P, SA)', 'ElSum (CL, MG)', 'ElSum (CO, SA)', 'ElSum (FE, NA)', 'ElSum (FE, P)', 'ElSum (A, CU)', 'ElSum (C, CU)', 'ElSum (A, FE)', 'ElSum (MN, NA)', 'ElSum (CL, FE)', 'ElSum (F, FE)', 'ElSum (CU, NA)', 'ElSum (F, MG)', 'ElSum (K, P)', 'ElSum (K, OA)', 'ElSum (C, K)', 'ElSum (HD, K)', 'ElSum (MG, SA)', 'ElSum (S, SA)', 'ElSum (FE, SA)', 'ElSum (A, CO)', 'ElSum (CO, N)', 'ElSum (CU, N)', 'ElSum (CU, HD)', 'ElSum (CU, OA)', 'ElSum (MG, S)', 'ElSum (NI, SA)', 'ElSum (A, NI)', 'ElSum (CL, NI)', 'ElSum (BR, MG)', 'ElSum (CO, NA)', 'ElSum (BR, MN)', 'ElSum (NA, NA)', 'ElSum (HD, I)', 'ElSum (C, I)', 'ElSum (I, OA)', 'ElSum (BR, ZN)', 'ElSum (NA, P)', 'ElSum (CL, MN)', 'ElSum (CO, S)', 'ElSum (CA, F)', 'ElSum (C, CD)', 'ElSum (I, N)', 'ElSum (CU, F)', 'ElSum (FE, S)', 'ElSum (A, I)', 'ElSum (I, ZN)', 'ElSum (I, SA)', 'ElSum (A, K)', 'ElSum (K, N)', 'ElSum (CD, P)', 'ElSum (CD, OA)', 'ElSum (CD, HD)', 'ElSum (MN, S)', 'ElSum (F, K)', 'ElSum (CL, NA)', 'ElSum (CL, CU)', 'ElSum (CO, F)', 'ElSum (K, SA)', 'ElSum (K, NA)', 'ElSum (CU, SA)', 'ElSum (A, CD)', 'ElSum (CD, N)', 'ElSum (CL, CO)', 'ElSum (CA, CL)', 'ElSum (F, NA)', 'ElSum (HG, OA)', 'ElSum (HD, HG)', 'ElSum (NA, S)', 'ElSum (I, MG)',
-                'BPF ALPHA SIDECHAIN', 'BPF ALPHA BACKBONE', 'BPF BETA SIDECHAIN', 'BPF BETA BACKBONE', 'BPF OTHER SIDECHAIN', 'BPF OTHER BACKBONE',
-                'HC ALPHA SIDECHAIN', 'HC ALPHA BACKBONE', 'HC BETA SIDECHAIN', 'HC BETA BACKBONE', 'HC OTHER SIDECHAIN', 'HC OTHER BACKBONE',
-                'HB ALPHA SIDECHAIN LIGAND', 'HB ALPHA BACKBONE LIGAND', 'HB BETA SIDECHAIN LIGAND', 'HB BETA BACKBONE LIGAND', 'HB OTHER SIDECHAIN LIGAND', 'HB OTHER BACKBONE LIGAND',
-                'HB ALPHA SIDECHAIN RECEPTOR', 'HB ALPHA BACKBONE RECEPTOR', 'HB BETA SIDECHAIN RECEPTOR', 'HB BETA BACKBONE RECEPTOR', 'HB OTHER SIDECHAIN RECEPTOR', 'HB OTHER BACKBONE RECEPTOR',
-                'SB ALPHA', 'SB BETA', 'SB OTHER',
-                'piStack ALPHA', 'piStack BETA', 'piStack OTHER',
-                'tStack ALPHA', 'tStack BETA', 'tStack OTHER',
-                'catPi ALPHA LIGAND', 'catPi BETA LIGAND', 'catPi OTHER LIGAND',
-                'catPi ALPHA RECEPTOR', 'catPi BETA RECEPTOR', 'catPi OTHER RECEPTOR',
-                'nRot'
-            ]
-
-    binana_data = pd.DataFrame(columns = df_headers)
-    data = dict()
-    for key, value in tables.items():
-
-        if key == f'Atom-type pair counts within {close_contacts_distance_header} angstroms:':
-            for index in value.index:
-                atom1 = (value.iloc[index-1,0]).lstrip().rstrip()
-                atom2 = (value.iloc[index-1,1]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,2])
-                data[f'{close_contacts_distance_header} ({atom1}, {atom2})'] = tally
-
-
-        elif key == f'Atom-type pair counts within {medium_contacts_distance_header} angstroms:':
-            for index in value.index:
-                atom1 = (value.iloc[index-1,0]).lstrip().rstrip()
-                atom2 = (value.iloc[index-1,1]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,2])
-                data[f'{medium_contacts_distance_header} ({atom1}, {atom2})'] = tally
-
-        elif key == 'Ligand atom types:':
-            for index in value.index:
-                atom = (value.iloc[index-1,0]).lstrip().rstrip()
-                data[f'LA {atom}'] = 1
-
-        elif key == 'Summed electrostatic energy by atom-type pair, in J/mol:':
-            for index in value.index:
-                atom1 = (value.iloc[index-1,0]).lstrip().rstrip()
-                atom2 = (value.iloc[index-1,1]).lstrip().rstrip()
-                tally = float(value.iloc[index-1,2])
-                data[f'ElSum ({atom1}, {atom2})'] = tally
-
-        elif key == 'Active-site flexibility:':
-            for index in value.index:
-                chain = (value.iloc[index-1,0]).lstrip().rstrip()
-                struc = (value.iloc[index-1,1]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,2])
-                data[f'BPF {struc} {chain}'] = tally
-
-        elif key == 'Hydrogen bonds:':
-            for index in value.index:
-                donor = (value.iloc[index-1,0]).lstrip().rstrip()
-                chain = (value.iloc[index-1,1]).lstrip().rstrip()
-                struc = (value.iloc[index-1,2]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,3])
-                data[f'HB {struc} {chain} {donor}'] = tally
-
-        elif key == 'Hydrophobic contacts (C-C):':
-            for index in value.index:
-                chain = (value.iloc[index-1,0]).lstrip().rstrip()
-                struc = (value.iloc[index-1,1]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,2])
-                data[f'HC {struc} {chain}'] = tally
-
-        elif key == 'pi-pi stacking interactions:':
-            for index in value.index:
-                struc = (value.iloc[index-1,0]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,1])
-                data[f'piStack {struc}'] = tally
-
-        elif key == 'T-stacking (face-to-edge) interactions:':
-            for index in value.index:
-                struc = (value.iloc[index-1,0]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,1])
-                data[f'tStack {struc}'] = tally
-
-        elif key == 'Cation-pi interactions:':
-            for index in value.index:
-                char = (value.iloc[index-1,0]).lstrip().rstrip()
-                struc = (value.iloc[index-1,1]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,2])
-                data[f'catPi {struc} {char}'] = tally
-
-        elif key == 'Salt Bridges:':
-            for index in value.index:
-                struc = (value.iloc[index-1,0]).lstrip().rstrip()
-                tally = int(value.iloc[index-1,1])
-                data[f'SB {struc}'] = tally
-
-        elif key == 'Number of rotatable bonds in the ligand:':
-            data['nRot'] = value
-
-    binana_data = binana_data.append(data, ignore_index = True)
-
-    binana_data = binana_data.fillna(0)
-
-    binana_data = binana_data[df_headers]
-
-    return binana_data
