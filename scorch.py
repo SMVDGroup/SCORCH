@@ -57,7 +57,7 @@ def get_ligand_id(ligand):
     Ligand_ID = ligand.split('_pose')[0]
     return Ligand_ID
 
-def run_binana(params, lig, rec):
+def run_binana(lig, rec):
 
     ###########################################
     # Function: Get BINANA descriptors for    #
@@ -71,7 +71,7 @@ def run_binana(params, lig, rec):
     # descriptor features as a DataFrame      #
     ###########################################
 
-    output = binana.Binana(lig, rec, params).out
+    output = binana.Binana(lig, rec).out
 
     return binana.parse(output, 0)
 
@@ -124,7 +124,7 @@ def extract(params):
     lig = params.params["ligand"]
     rec = params.params["receptor"]
     k = kier_flexibility(lig)
-    bin = run_binana(params,lig,rec)
+    bin = run_binana(lig,rec)
     ECIF = calculate_ecifs(lig, rec)
     df = pd.concat([ECIF,bin],axis=1)
     df['Kier Flexibility'] = k
