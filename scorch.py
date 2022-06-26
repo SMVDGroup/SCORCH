@@ -292,10 +292,11 @@ def extract(lig, rec):
 
     timedict['afterkier'] = time.time()
     bin = run_binana(lig,rec)
+    binana_df = pd.DataFrame([bin])
     timedict['afterbin'] = time.time()
     ECIF = calculate_ecifs(lig, rec)
     timedict['afterecifs'] = time.time()
-    df = pd.concat([ECIF,bin],axis=1)
+    df = pd.concat([ECIF,binana_df],axis=1)
     timedict['afterconcat'] = time.time()
     df['Kier Flexibility'] = k
 
