@@ -109,7 +109,7 @@ def calculate_ecifs(lig, rec):
 
     return ECIF_df
 
-def extract(params):
+def extract(lig, rec):
 
     ###########################################
     # Function: Get all descriptor features   #
@@ -120,9 +120,7 @@ def extract(params):
     # Output: All protein-ligand complex      #
     # descriptor features as a DataFrame      #
     ###########################################
-
-    lig = params.params["ligand"]
-    rec = params.params["receptor"]
+    
     k = kier_flexibility(lig)
     bin = run_binana(lig,rec)
     ECIF = calculate_ecifs(lig, rec)
@@ -759,8 +757,6 @@ def scoring(params):
         batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
     else:
         batches_needed = 1
-
-    receptor_ligand_args = [(r[0], r[1], chunk_id) for r, chunk_id in zip(receptor_ligand_args, range(len(receptor_ligand_args)))]
 
     if not os.path.isdir(os.path.join('utils','temp','binary_features')):
         os.makedirs(os.path.join('utils','temp','binary_features'))
