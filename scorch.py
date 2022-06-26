@@ -30,7 +30,7 @@ import logging
 from utils.ecifs import *
 from utils.dock_functions import *
 import pandas as pd
-from joblib import Parallel, delayed, load
+from joblib import Parallel, parallel, delayed, load
 import joblib
 import sys
 from functools import reduce
@@ -60,13 +60,13 @@ def tqdm_joblib(tqdm_object):
             n_completed = self.n_completed_tasks - tqdm_object.n
             tqdm_object.update(n=n_completed)
 
-    original_print_progress = joblib.parallel.Parallel.print_progress
-    joblib.parallel.Parallel.print_progress = tqdm_print_progress
+    original_print_progress = parallel.Parallel.print_progress
+    parallel.Parallel.print_progress = tqdm_print_progress
 
     try:
         yield tqdm_object
     finally:
-        joblib.parallel.Parallel.print_progress = original_print_progress
+        parallel.Parallel.print_progress = original_print_progress
         tqdm_object.close()
 
 def get_ligand_id(ligand):
