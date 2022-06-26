@@ -591,8 +591,105 @@ def parse_args(args):
             logging.critical('Run "python scoring.py -h" for usage instructions')
             sys.exit()
 
+    return params
+
+def prepare_and_dock_inputs(params):
+
+    dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
+
+    if params['ref_lig'] is None:
+        if params['center'] is None and params['range'] is None:
+            logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- supplying a reference ligand")
+            sys.exit()
+        else:
+            try:
+                coords = (float(params['center'][0]),
+                            float(params['center'][1]),
+                            float(params['center'][2]),
+                            float(params['range'][0]),
+                            float(params['range'][1]),
+                            float(params['range'][2]))
+            except:
+                logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
+                sys.exit()
+    else:
+        coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
+
+    if not os.path.isdir(os.path.join('utils','temp','pdb_files')):
+        os.makedirs(os.path.join('utils','temp','pdb_files'))
+        os.makedirs(os.path.join('utils','temp','pdbqt_files'))
+        os.makedirs(os.path.join('utils','temp','docked_pdbqt_files'))
+
+    pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
+    for pdb in pdbs:
+        os.remove(pdb)
+
+    pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+    for pdbqt in pdbqts:
+        os.remove(pdbqt)
+
+    docked_pdbqts = get_filepaths(os.path.join('utils','temp','docked_pdbqt_files',''))
+    for docked_pdbqt in docked_pdbqts:
+        os.remove(docked_pdbqt)
+
+    smi_dict = get_smiles(params['ligand'])
+
+    logging.info('Generating 3D pdbs from SMILES...')
+
+    with tqdm_joblib(tqdm(desc="Generating...", total=len(smi_dict))) as progress_bar:
+        Parallel(n_jobs=params['threads'])(delayed(make_pdbs_from_smiles)(smi) for smi in smi_dict.items())
+
+    pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
+
+    logging.info('Converting pdbs to pdbqts...')
+
+    merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
+
+    with tqdm_joblib(tqdm(desc="Converting...", total=len(merged_pdb_args))) as progress_bar:
+        Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_arg) for pdb_arg in merged_pdb_args.items())
+
+    pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
+
+    if sys.platform.lower() == 'darwin':
+        os_name = 'mac'
+    elif 'linux' in sys.platform.lower():
+        os_name = 'linux'
+
+    logging.info("Docking pdbqt ligands...")
+    for pdbqt in tqdm(pdbqts):
+        dock_file(
+                    os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
+                    params['receptor'],
+                    pdbqt,
+                    *coords,
+                    dock_settings['gwovina_settings']['exhaustiveness'],
+                    dock_settings['gwovina_settings']['num_wolves'],
+                    dock_settings['gwovina_settings']['num_modes'],
+                    dock_settings['gwovina_settings']['energy_range'],
+                    outfile=os.path.join(f'{stem_path}','utils','temp','docked_pdbqt_files',f'{os.path.split(pdbqt)[1]}')
+                    )
 
 
+    if '.' in params['ligand']:
+        docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
+    else:
+        docked_ligands_folder = os.path.basename(params['ligand'])
+
+    docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
+
+
+    params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
+    receptors = [params['receptor'] for i in range(len(params['ligand']))]
+    params['receptor'] = receptors
+
+    if not os.path.isdir('docked_ligands'):
+        os.mkdir('docked_ligands')
+    if not os.path.isdir(docked_ligands_path):
+        os.makedirs(docked_ligands_path)
+
+    for file in params['ligand']:
+        shutil.copy(file, docked_ligands_path)   
+    
     return params
 
 def prepare_features(receptor_ligand_args):
@@ -768,6 +865,73 @@ def prepare_models(params):
 
     return models
 
+def score_ligand_batch(params, ligand_batch, model_binaries):
+
+    with tqdm_joblib(tqdm(desc="Preparing features", total=len(ligand_batch))) as progress_bar:
+        multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
+
+    multi_pose_features = pd.concat(multi_pose_features)
+
+    multi_pose_features = scale_multipose_features(multi_pose_features)
+
+    models = [(m[0], m[1], multi_pose_features) for m in model_binaries]
+
+    model_results = list()
+
+    for model in models:
+        model_results.append(score(model))
+        logging.info('Done!')
+
+    logging.info('**************************************************************************\n')
+
+    merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
+
+    multi_models = ['xgboost_model',
+                    'ff_nn_models_average',
+                    'wd_nn_models_average']
+
+    merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
+    max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
+    minimum_val = 1 - max_std
+    
+    merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
+    merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
+
+    merged_results = merged_results[['Receptor',
+                                        'Ligand',
+                                        'SCORCH_pose_score',
+                                        'SCORCH_certainty']].copy()
+
+    merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
+    merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
+
+    del merged_results['Ligand']
+
+    return merged_results
+
+def create_final_results(params, ligand_scores):
+
+    final_ligand_scores = pd.concat(ligand_scores)
+    final_ligand_scores['SCORCH_score'] = final_ligand_scores.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
+    final_ligand_scores['best_pose'] = np.where(final_ligand_scores.SCORCH_score == final_ligand_scores.SCORCH_pose_score, 1, 0)
+
+    if not params['return_pose_scores']:
+        final_ligand_scores = final_ligand_scores.loc[final_ligand_scores.best_pose == 1]
+        final_ligand_scores = final_ligand_scores[['Receptor',
+                                                    'Ligand_ID',
+                                                    'Pose_Number',
+                                                    'SCORCH_score',
+                                                    'SCORCH_certainty']].copy()
+        final_ligand_scores = final_ligand_scores.sort_values(by='SCORCH_score', ascending=False)
+
+    else:
+        final_ligand_scores = final_ligand_scores.sort_values(by=['SCORCH_score','SCORCH_pose_score'], ascending=False)
+
+    numerics = list(final_ligand_scores.select_dtypes(include=[np.number]))
+    final_ligand_scores[numerics] = final_ligand_scores[numerics].round(5)
+
+    return final_ligand_scores
+
 def scoring(params):
 
     """
@@ -785,100 +949,7 @@ def scoring(params):
 
     if params['dock']:
 
-        dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
-
-        if params['ref_lig'] is None:
-            if params['center'] is None and params['range'] is None:
-                logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- supplying a reference ligand")
-                sys.exit()
-            else:
-                try:
-                    coords = (float(params['center'][0]),
-                              float(params['center'][1]),
-                              float(params['center'][2]),
-                              float(params['range'][0]),
-                              float(params['range'][1]),
-                              float(params['range'][2]))
-                except:
-                    logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
-                    sys.exit()
-        else:
-            coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
-
-        if not os.path.isdir(os.path.join('utils','temp','pdb_files')):
-            os.makedirs(os.path.join('utils','temp','pdb_files'))
-            os.makedirs(os.path.join('utils','temp','pdbqt_files'))
-            os.makedirs(os.path.join('utils','temp','docked_pdbqt_files'))
-
-        pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
-        for pdb in pdbs:
-            os.remove(pdb)
-
-        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
-        for pdbqt in pdbqts:
-            os.remove(pdbqt)
-
-        docked_pdbqts = get_filepaths(os.path.join('utils','temp','docked_pdbqt_files',''))
-        for docked_pdbqt in docked_pdbqts:
-            os.remove(docked_pdbqt)
-
-        smi_dict = get_smiles(params['ligand'])
-
-        logging.info('Generating 3D pdbs from SMILES...')
-
-        with tqdm_joblib(tqdm(desc="Generating...", total=len(smi_dict))) as progress_bar:
-            Parallel(n_jobs=params['threads'])(delayed(make_pdbs_from_smiles)(smi) for smi in smi_dict.items())
-
-        pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
-
-        logging.info('Converting pdbs to pdbqts...')
-
-        merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
-
-        with tqdm_joblib(tqdm(desc="Converting...", total=len(merged_pdb_args))) as progress_bar:
-            Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_arg) for pdb_arg in merged_pdb_args.items())
-
-        pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
-
-        if sys.platform.lower() == 'darwin':
-            os_name = 'mac'
-        elif 'linux' in sys.platform.lower():
-            os_name = 'linux'
-
-        logging.info("Docking pdbqt ligands...")
-        for pdbqt in tqdm(pdbqts):
-            dock_file(
-                      os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
-                      params['receptor'],
-                      pdbqt,
-                      *coords,
-                      dock_settings['gwovina_settings']['exhaustiveness'],
-                      dock_settings['gwovina_settings']['num_wolves'],
-                      dock_settings['gwovina_settings']['num_modes'],
-                      dock_settings['gwovina_settings']['energy_range'],
-                      outfile=os.path.join(f'{stem_path}','utils','temp','docked_pdbqt_files',f'{os.path.split(pdbqt)[1]}')
-                      )
-
-
-        if '.' in params['ligand']:
-            docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
-        else:
-            docked_ligands_folder = os.path.basename(params['ligand'])
-
-        docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
-
-
-        params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
-        receptors = [params['receptor'] for i in range(len(params['ligand']))]
-        params['receptor'] = receptors
-
-        if not os.path.isdir('docked_ligands'):
-            os.mkdir('docked_ligands')
-        if not os.path.isdir(docked_ligands_path):
-            os.makedirs(docked_ligands_path)
-
-        for file in params['ligand']:
-            shutil.copy(file, docked_ligands_path)
+       params = prepare_and_dock_inputs(params)
 
     poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
 
@@ -901,6 +972,9 @@ def scoring(params):
 
     all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
 
+    model_dict = prepare_models(params)
+    model_binaries = list(model_dict.items())
+
     ligand_scores = list()
 
     logging.info('**************************************************************************\n')
@@ -909,75 +983,14 @@ def scoring(params):
 
         logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
         
-        with tqdm_joblib(tqdm(desc="Preparing features", total=len(ligand_batch))) as progress_bar:
-            multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
-
-        multi_pose_features = pd.concat(multi_pose_features)
-
-        multi_pose_features = scale_multipose_features(multi_pose_features)
-
-        models = prepare_models(params)
-        models = list(models.items())
-        models = [(m[0], m[1], multi_pose_features) for m in models]
-
-        model_results = list()
-
-        for model in models:
-            model_results.append(score(model))
-            logging.info('Done!')
-
-
-        logging.info('**************************************************************************\n')
-
-        merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
-
-        multi_models = ['xgboost_model',
-                        'ff_nn_models_average',
-                        'wd_nn_models_average']
-
-        merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
-        max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
-        minimum_val = 1 - max_std
-        maxmum_val = 1
-        merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
-        merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
-
-        merged_results = merged_results[['Receptor',
-                                         'Ligand',
-                                         'SCORCH_pose_score',
-                                         'SCORCH_certainty']].copy()
-
-        merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
-        merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
-
-        del merged_results['Ligand']
+        merged_results = score_ligand_batch(params, ligand_batch, model_binaries)
 
         ligand_scores.append(merged_results)
 
-    final_ligand_scores = pd.concat(ligand_scores)
-    final_ligand_scores['SCORCH_score'] = final_ligand_scores.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
-    final_ligand_scores['best_pose'] = np.where(final_ligand_scores.SCORCH_score == final_ligand_scores.SCORCH_pose_score, 1, 0)
-
-    if not params['return_pose_scores']:
-        final_ligand_scores = final_ligand_scores.loc[final_ligand_scores.best_pose == 1]
-        final_ligand_scores = final_ligand_scores[['Receptor',
-                                                    'Ligand_ID',
-                                                    'Pose_Number',
-                                                    'SCORCH_score',
-                                                    'SCORCH_certainty']].copy()
-        final_ligand_scores = final_ligand_scores.sort_values(by='SCORCH_score', ascending=False)
-
-    else:
-        final_ligand_scores = final_ligand_scores.sort_values(by=['SCORCH_score','SCORCH_pose_score'], ascending=False)
+    final_ligand_scores = create_final_results(params, ligand_scores)
 
     if params['dock']:
         final_ligand_scores['Ligand_SMILE'] = final_ligand_scores['Ligand_ID'].map(smi_dict)
-
-    numerics = list(final_ligand_scores.select_dtypes(include=[np.number]))
-    final_ligand_scores[numerics] = final_ligand_scores[numerics].round(5)
-
-    for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
-        os.remove(os.path.join('utils','temp','binary_features',existing_file))
 
     return final_ligand_scores
 
@@ -997,7 +1010,7 @@ if __name__ == "__main__":
 
         # send to stdout if no outfile given
         sys.stdout.write(scoring_function_results.to_csv(index=False))
-        
+
     else:
 
         # otherwise save to user specified csv
