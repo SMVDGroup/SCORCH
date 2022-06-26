@@ -2515,7 +2515,25 @@ class Binana:
         return string
 
     # The meat of the class
-    def __init__(self, ligand_pdbqt_filename, receptor_pdbqt_filename, parameters):
+    def __init__(self, ligand_pdbqt_filename, receptor_pdbqt_filename):
+
+
+        parameters = {'close_contacts_dist1_cutoff': 2.5,
+                      'close_contacts_dist2_cutoff': 4.0, 
+                      'electrostatic_dist_cutoff': 4.0, 
+                      'active_site_flexibility_dist_cutoff': 4.0, 
+                      'hydrophobic_dist_cutoff': 4.0, 
+                      'hydrogen_bond_dist_cutoff': 4.0, 
+                      'hydrogen_bond_angle_cutoff': 40.0, 
+                      'pi_padding_dist': 0.75, 
+                      'pi_pi_interacting_dist_cutoff': 7.5, 
+                      'pi_stacking_angle_tolerance': 30.0, 
+                      'T_stacking_angle_tolerance': 30.0, 
+                      'T_stacking_closest_dist_cutoff': 5.0, 
+                      'cation_pi_dist_cutoff': 6.0, 
+                      'salt_bridge_dist_cutoff': 5.5,  
+                      'output_dir': '', 
+                      'output_file': ''}
 
         ligand = PDB()
         ligand.load_PDB(ligand_pdbqt_filename)
