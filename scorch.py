@@ -881,17 +881,13 @@ def scoring(params):
     total_poses = len(receptor_ligand_args)
     estimated_ram_usage = (360540*total_poses) + 644792975
     available_ram = psutil.virtual_memory().total
-    safe_ram_available = available_ram*0.08
+    safe_ram_available = available_ram*0.008
+    print(estimated_ram_usage)
+    print(safe_ram_available)
     if estimated_ram_usage > safe_ram_available:
         batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
     else:
         batches_needed = 1
-
-    if not os.path.isdir(os.path.join('utils','temp','binary_features')):
-        os.makedirs(os.path.join('utils','temp','binary_features'))
-
-    for existing_file in os.listdir(os.path.join('utils','temp','binary_features')):
-        os.remove(os.path.join('utils','temp','binary_features',existing_file))
 
     all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
 
