@@ -74,7 +74,11 @@ def run_binana(lig, rec):
 
     output = binana.Binana(lig, rec).out
 
-    return binana.parse(output, 0)
+    from pprint import pprint
+
+    pprint(output)
+
+    return output
 
 def kier_flexibility(lig):
 
