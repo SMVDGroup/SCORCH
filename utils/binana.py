@@ -3168,294 +3168,31 @@ class Binana:
                             )
                         )
 
-        # Now save the files
-        # preface = "REMARK "
-        preface = ""
-        # if an output directory is specified, and it doesn't exist, create it
-        if parameters["output_dir"] != "":
-            if not os.path.exists(parameters["output_dir"]):
-                os.mkdir(parameters["output_dir"])
+        # custom output for SCORCH
 
-        """'# old output format
-        output = ""
-        output = output + "Atom-type pair counts within " + str(parameters['close_contacts_dist1_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_two_half) + "\n"
-        output = output + "Atom-type pair counts within " + str(parameters['close_contacts_dist2_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_four) + "\n"
-        output = output + "Ligand atom types: " + str(ligand_atom_types) + "\n"
-        output = output + "Electrostatic energy by atom-type pair, in J/mol: " + str(ligand_receptor_atom_type_pairs_electrostatic) + "\n"
-        output = output + "Number of rotatable bonds in ligand: " + str(ligand.rotateable_bonds_count) + "\n"
-        output = output + "Active-site flexibility: " + str(active_site_flexibility) + "\n"
-        output = output + "HBonds: " + str(hbonds) + "\n"
-        output = output + "Hydrophobic contacts (C-C): " + str(hydrophobics) + "\n"
-        output = output + "pi interactions: " + str(PI_interactions) + "\n"
-        output = output + "Salt bridges: " + str(salt_bridges) + "\n"
+        # this is the closest contacts
+        print(ligand_receptor_atom_type_pairs_less_than_two_half)
 
-        print output"""
+        # this is the closest contacts
+        print(ligand_receptor_atom_type_pairs_less_than_four)
+        
+        # this is the electrostatics
+        print(ligand_receptor_atom_type_pairs_electrostatic)
+        
+        # this is the active site flexibility
+        print(active_site_flexibility)
+        
+        # these are the hbonds
+        print(hbonds)
+        
+        # these are the hydrophobics
+        print(hydrophobics)
 
-        output = ""
-
-        # restate the parameters
-        output = output + preface + "Command-line parameters used:" + "\n"
-        output = (
-            output
-            + preface
-            + "                 Parameter              |            Value           "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   -------------------------------------|----------------------------"
-            + "\n"
-        )
-
-        for key in list(parameters.keys()):
-            value = str(parameters[key])
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key, 37)
-                + "| "
-                + self.center(value, 27)
-                + "\n"
-            )
-
-        # a description of the analysis
-
-        output = output + preface + "" + "\n"
-        output = (
-            output
-            + preface
-            + "Atom-type pair counts within "
-            + str(parameters["close_contacts_dist1_cutoff"])
-            + " angstroms:"
-            + "\n"
-        )
-        output = output + preface + "    Atom Type | Atom Type | Count" + "\n"
-        output = output + preface + "   -----------|-----------|-------" + "\n"
-        for key in ligand_receptor_atom_type_pairs_less_than_two_half:
-            value = ligand_receptor_atom_type_pairs_less_than_two_half[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 11)
-                + "|"
-                + self.center(key[1], 11)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in close_contacts_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "\n\n"
-        output = (
-            output
-            + preface
-            + "Atom-type pair counts within "
-            + str(parameters["close_contacts_dist2_cutoff"])
-            + " angstroms:"
-            + "\n"
-        )
-        output = output + preface + "    Atom Type | Atom Type | Count" + "\n"
-        output = output + preface + "   -----------|-----------|-------" + "\n"
-        for key in ligand_receptor_atom_type_pairs_less_than_four:
-            value = ligand_receptor_atom_type_pairs_less_than_four[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 11)
-                + "|"
-                + self.center(key[1], 11)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in contacts_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Ligand atom types:" + "\n"
-        output = output + preface + "    Atom Type " + "\n"
-        output = output + preface + "   -----------" + "\n"
-        for key in ligand_atom_types:
-            output = output + preface + "   " + self.center(key, 11) + "\n"
-
-        output = output + preface + "" + "\n"
-        output = (
-            output
-            + preface
-            + "Summed electrostatic energy by atom-type pair, in J/mol:"
-            + "\n"
-        )
-        output = output + preface + "    Atom Type | Atom Type | Energy (J/mol)" + "\n"
-        output = output + preface + "   -----------|-----------|----------------" + "\n"
-        for key in ligand_receptor_atom_type_pairs_electrostatic:
-            value = ligand_receptor_atom_type_pairs_electrostatic[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 11)
-                + "|"
-                + self.center(key[1], 11)
-                + "|"
-                + self.center(str(value), 16)
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = (
-            output
-            + preface
-            + "Number of rotatable bonds in the ligand: "
-            + str(ligand.rotateable_bonds_count)
-            + "\n"
-        )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Active-site flexibility:" + "\n"
-        output = (
-            output
-            + preface
-            + "    Sidechain/Backbone | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   --------------------|---------------------|-------"
-            + "\n"
-        )
-        for key in active_site_flexibility:
-            value = active_site_flexibility[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 20)
-                + "|"
-                + self.center(key[1], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Hydrogen bonds:" + "\n"
-        output = (
-            output
-            + preface
-            + "    Location of Donor | Sidechain/Backbone | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   -------------------|--------------------|---------------------|-------"
-            + "\n"
-        )
-        for key in hbonds:
-            value = hbonds[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[1], 19)
-                + "|"
-                + self.center(key[2], 20)
-                + "|"
-                + self.center(key[3], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in hbonds_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + " - "
-                + atom_pairs[2]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Hydrophobic contacts (C-C):" + "\n"
-        output = (
-            output
-            + preface
-            + "    Sidechain/Backbone | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   --------------------|---------------------|-------"
-            + "\n"
-        )
-        for key in hydrophobics:
-            value = hydrophobics[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[0], 20)
-                + "|"
-                + self.center(key[1], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in hydrophobic_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
+        # these are the aromatics
         stacking = []
         t_shaped = []
         pi_cation = []
+
         for key in PI_interactions:
             value = PI_interactions[key]
             together = key + "_" + str(value)
@@ -3466,149 +3203,33 @@ class Binana:
             if "SHAPED" in together:
                 t_shaped.append(together)
 
-        output = output + preface + "" + "\n"
-        output = output + preface + "pi-pi stacking interactions:" + "\n"
-        output = output + preface + "    Secondary Structure | Count " + "\n"
-        output = output + preface + "   ---------------------|-------" + "\n"
-        for item in stacking:
-            item = item.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(item[1], 21)
-                + "|"
-                + self.center(item[2], 7)
-                + "\n"
-            )
+        # stacking
+        print(stacking)
+        
+        # t-shaped
+        print(t_shaped)
+        
+        # pi cations
+        print(pi_cation)
+        
+        # salt bridges
+        print(salt_bridges)
 
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in pi_stacking_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
+        output = {'closest':ligand_receptor_atom_type_pairs_less_than_two_half,
+                  'close':ligand_receptor_atom_type_pairs_less_than_four,
+                  'elsums':ligand_receptor_atom_type_pairs_electrostatic,
+                  'bpfs':active_site_flexibility,
+                  'hbonds':hbonds,
+                  'hydrophobics':hydrophobics,
+                  'ligand_atoms':ligand_atom_types,
+                  'stacking':stacking,
+                  't_stacking':t_shaped,
+                  'pi_cation':pi_cation,
+                  'salt_bridges':salt_bridges,
+                  'nrot':ligand.rotateable_bonds_count
+                  }
 
-        output = output + preface + "" + "\n"
-        output = output + preface + "T-stacking (face-to-edge) interactions:" + "\n"
-        output = output + preface + "    Secondary Structure | Count " + "\n"
-        output = output + preface + "   ---------------------|-------" + "\n"
-        for item in t_shaped:
-            # need to check
-            item = item.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(item[1], 21)
-                + "|"
-                + self.center(item[2], 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in T_stacking_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Cation-pi interactions:" + "\n"
-        output = (
-            output
-            + preface
-            + "    Which residue is charged? | Secondary Structure | Count "
-            + "\n"
-        )
-        output = (
-            output
-            + preface
-            + "   ---------------------------|---------------------|-------"
-            + "\n"
-        )
-        for item in pi_cation:
-            # need to check
-            item = item.split("_")
-            item2 = item[1].split("-")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(item2[0], 27)
-                + "|"
-                + self.center(item[2], 21)
-                + "|"
-                + self.center(item[3], 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in pi_cat_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        output = output + preface + "" + "\n"
-        output = output + preface + "Salt Bridges:" + "\n"
-        output = output + preface + "    Secondary Structure | Count " + "\n"
-        output = output + preface + "   ---------------------|-------" + "\n"
-        for key in salt_bridges:
-            value = salt_bridges[key]
-            key = key.split("_")
-            output = (
-                output
-                + preface
-                + "   "
-                + self.center(key[1], 21)
-                + "|"
-                + self.center(str(value), 7)
-                + "\n"
-            )
-
-        output = output + preface + "\nRaw data:\n"
-        for atom_pairs in salt_bridge_labels:
-            output = (
-                output
-                + preface
-                + "     "
-                + atom_pairs[0]
-                + " - "
-                + atom_pairs[1]
-                + "\n"
-            )
-
-        pdb_close_contacts.set_resname("CCN")
-        pdb_contacts.set_resname("CON")
-        pdb_contacts_alpha_helix.set_resname("ALP")
-        pdb_contacts_beta_sheet.set_resname("BET")
-        pdb_contacts_other_2nd_structure.set_resname("OTH")
-        pdb_back_bone.set_resname("BAC")
-        pdb_side_chain.set_resname("SID")
-        pdb_hydrophobic.set_resname("HYD")
-        pdb_hbonds.set_resname("HBN")
-        pdb_pistack.set_resname("PIS")
-        pdb_pi_T.set_resname("PIT")
-        pdb_pi_cat.set_resname("PIC")
-        pdb_salt_bridges.set_resname("SAL")
-        ligand.set_resname("LIG")
-
+        # assign the output
         self.out = output
 
         '''
