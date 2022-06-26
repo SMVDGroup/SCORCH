@@ -678,27 +678,6 @@ def score(models):
 
     return results
 
-def multiprocess_wrapper(function, items, threads):
-
-    ###########################################
-    # Function: Parallelise scoring           #
-    # protein/ligand complexes                #
-    #                                         #
-    # Inputs: Function to parallelise         #
-    # (def score),                            #
-    # list of tuples as function input,       #
-    # number of threads to parallelise across #
-    #                                         #
-    # Output: List of returned results        #
-    ###########################################
-
-    processes = min(threads, mp.cpu_count())
-    with mp.Pool(processes) as p:
-        results = list(tqdm(p.imap(function, items), total=len(items)))
-        p.close()
-        p.join()
-    return results
-
 def print_intro(params):
 
     ###########################################
@@ -834,13 +813,18 @@ def scoring(params):
         smi_dict = get_smiles(params['ligand'])
 
         logging.info('Generating 3D pdbs from SMILES...')
-        fixes = multiprocess_wrapper(make_pdbs_from_smiles, smi_dict.items(), params['threads'])
+
+        with tqdm_joblib(tqdm(desc="Generating...", total=len(smi_dict))) as progress_bar:
+            Parallel(n_jobs=params['threads'])(delayed(make_pdbs_from_smiles)(smi) for smi in smi_dict.items())
 
         pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
+
         logging.info('Converting pdbs to pdbqts...')
+
         merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
 
-        multiprocess_wrapper(autodock_convert, merged_pdb_args.items(), params['threads'])
+        with tqdm_joblib(tqdm(desc="Generating...", total=len(merged_pdb_args))) as progress_bar:
+            Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_arg) for pdb_arg in merged_pdb_args.items())
 
         pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
 
