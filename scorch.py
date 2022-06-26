@@ -151,13 +151,13 @@ def extract(lig, rec):
 
     return df
 
-def transform_df(df):
+def prune_df_headers(df):
 
     # TODO move scaling outside loop
 
     ###########################################
-    # Function: Condense and scale descriptor #
-    # features for model input                #
+    # Function: Condense and features for     #
+    # model input                             #
     #                                         #
     # Inputs: Full Dataframe of               #
     # protein-ligand complex descriptors,     #
@@ -170,13 +170,7 @@ def transform_df(df):
     ###########################################
 
     reference_headers = json.load(open(os.path.join('utils','params','features.json')))
-    scaler_58 = reference_headers.get('for_scaler_58')
     headers_58 = reference_headers.get('492_models_58')
-
-    #df = df[scaler_58]
-    #scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
-    #scaled = scaler.transform(df)
-    #df[df.columns] = scaled
     df = df[headers_58]
 
     return df
@@ -466,7 +460,7 @@ def prepare_features(receptor_ligand_args):
 
     timedict['after_extract'] = time.time()
 
-    multi_pose_features = transform_df(features)
+    multi_pose_features = prune_df_headers(features)
 
     timedict['after_transform'] = time.time()
 
@@ -505,7 +499,7 @@ def scale_multipose_features(df):
     df = df[headers_58]
 
     df['Ligand'], df['Receptor'] = ligands, receptors
-    
+
     return df
 
 def score(models):
