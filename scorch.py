@@ -9,9 +9,14 @@ School of Biological Sciences
 The University of Edinburgh                                         
 """
 
+#######################################################################
+# Imports
 
-# import all libraries and ignore tensorflow warnings
+# import os and set tensorflow verbosity
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+# import other libraries
 import sys
 import math
 import json
@@ -34,15 +39,20 @@ from utils.dock_functions import *
 from functools import partialmethod
 from warnings import filterwarnings
 from itertools import product, chain
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow.keras.models import load_model
 from joblib import Parallel, parallel, delayed, load
+
+#######################################################################
+# Global Variables
 
 # filter pandas warnings
 filterwarnings('ignore')
 
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
+
+#######################################################################
+# Functions
 
 @contextlib.contextmanager
 def tqdm_joblib(tqdm_object):
@@ -603,14 +613,11 @@ def prepare_features(receptor_ligand_args):
     csv file                                
     """
 
-    complex_params = receptor_ligand_args[0]
-    scorch_params = receptor_ligand_args[1]
+    ligand_pose_number = receptor_ligand_args[2][0]
+    ligand_pdbqt_block = receptor_ligand_args[2][1]
 
-    ligand_pose_number = complex_params[2][0]
-    ligand_pdbqt_block = complex_params[2][1]
-
-    receptor_filepath = complex_params[0]
-    ligand_filepath = complex_params[1]
+    receptor_filepath = receptor_ligand_args[0]
+    ligand_filepath = receptor_ligand_args[1]
     ligand_basename = os.path.basename(ligand_filepath)
     ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
     receptor_basename = os.path.basename(receptor_filepath)
@@ -882,9 +889,6 @@ def scoring(params):
         receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
         receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
 
-    receptor_ligand_args  = list(map(lambda x: (x, params), receptor_ligand_args))
-    receptor_ligand_args = [(r[0], r[1]) for r in receptor_ligand_args]
-
     total_poses = len(receptor_ligand_args)
     estimated_ram_usage = (360540*total_poses) + 644792975
     available_ram = psutil.virtual_memory().total
@@ -977,11 +981,27 @@ def scoring(params):
 
     return final_ligand_scores
 
+#######################################################################
+# Main script
+
 if __name__ == "__main__":
 
+    # parse user arguments
     params = parse_args(sys.argv)
+
+    # score complexes
     scoring_function_results = scoring(params)
+
+    # output results
     if not params['out']:
+
+        # send to stdout if no outfile given
         sys.stdout.write(scoring_function_results.to_csv(index=False))
+        
     else:
+
+        # otherwise save to user specified csv
         scoring_function_results.to_csv(params['out'], index=False)
+
+
+# scorch.py end
