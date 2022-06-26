@@ -1,13 +1,13 @@
-#######################################################################
-# SCORCH script version 1.0 - Run python scoring.py -h for help    #
-#                                                                     #
-# Script Authors:                                                     #
-# @sammoneykyrle                                                      #
-# @milesmcgibbon                                                      #
-#                                                                     #
-# School of Biological Sciences                                       #
-# The University of Edinburgh                                         #
-#######################################################################
+"""
+SCORCH script version 1.0 - Run python scoring.py -h for help    
+                                                                    
+Script Authors:                                                     
+@sammoneykyrle                                                      
+@milesmcgibbon                                                      
+                                                                    
+School of Biological Sciences                                       
+The University of Edinburgh                                         
+"""
 
 
 # import all libraries and ignore tensorflow warnings
@@ -44,9 +44,9 @@ filterwarnings('ignore')
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
 
+# context manager to allow joblib progress monitoring
 @contextlib.contextmanager
 def tqdm_joblib(tqdm_object):
-    """Context manager to patch joblib to report into tqdm progress bar given as argument"""
 
     def tqdm_print_progress(self):
         if self.n_completed_tasks > tqdm_object.n:
@@ -63,35 +63,39 @@ def tqdm_joblib(tqdm_object):
         tqdm_object.close()
 
 def get_ligand_id(ligand):
-    ###########################################
-    # Function: Get ligand ID from pose scores#
-    #                                         #
-    # Inputs: Ligand pose name                #
-    #                                         #
-    # Output: Ligand ID base name             #
-    ###########################################
+    """
+    Function: Get ligand ID from pose scores
+                                            
+    Inputs: Ligand pose name                
+                                            
+    Output: Ligand ID base name             
+    """
 
     Ligand_ID = ligand.split('_pose')[0]
     return Ligand_ID
 
 def run_binana(lig, rec):
 
-    ###########################################
-    # Function: Get BINANA descriptors for    #
-    # protein-ligand complex                  #
-    #                                         #
-    # Inputs: BINANA parameters dictionary,   #
-    # ligand as a pdbqt string block,         #
-    # receptor pdbqt filepath                 #
-    #                                         #
-    # Output: BINANA protein-ligand complex   #
-    # descriptor features as a DataFrame      #
-    ###########################################
+    """
+    Function: Get BINANA descriptors for    
+    protein-ligand complex                  
+                                        
+    Inputs: BINANA parameters dictionary,   
+    ligand as a pdbqt string block,         
+    receptor pdbqt filepath                 
+                                            
+    Output: BINANA protein-ligand complex   
+    descriptor features as a DataFrame      
+    """
 
+    # empty dictionary to populate with features
     binana_features = dict()
 
+    # get dictionary of binana features
     main_binana_out = binana.Binana(lig, rec).out
 
+
+    # define the features we want
     keep_closest_contacts = ["2.5 (HD, OA)", 
                              "2.5 (HD, HD)", 
                              "2.5 (HD, N)", 
@@ -180,17 +184,17 @@ def run_binana(lig, rec):
                     "ElSum (CL, N)",
                     "ElSum (A, CL)"]
 
-    # add closest contacts to dict
+    # add closest contacts to binana_features dict
     for contact in keep_closest_contacts:
         binana_name = contact.split('(')[-1].split(')')[0].replace(', ','_')
         binana_features[contact] = main_binana_out['closest'].get(binana_name)
     
-    # add close contacts to dict
+    # add close contacts to binana_features dict
     for contact in keep_close_contacts:
         binana_name = contact.split('(')[-1].split(')')[0].replace(', ','_')
         binana_features[contact] = main_binana_out['close'].get(binana_name)
     
-    # add ligand atoms to dict
+    # add ligand atoms to binana_features dict as binary tallies
     for atom in keep_ligand_atoms:
         binana_name = atom.split()[-1]
         if main_binana_out['ligand_atoms'].get(binana_name) is None:
@@ -198,10 +202,12 @@ def run_binana(lig, rec):
         else:
             binana_features[atom] = 1
     
+    # add electrostatics to binana_features dict
     for elsum in keep_elsums:
         binana_name = elsum.split('(')[-1].split(')')[0].replace(', ','_')
         binana_features[elsum] = main_binana_out['elsums'].get(binana_name)
 
+    # add active site flexibility features to binana_features
     binana_features["BPF ALPHA SIDECHAIN"] = main_binana_out['bpfs'].get("SIDECHAIN_ALPHA")
     binana_features["BPF ALPHA BACKBONE"] = main_binana_out['bpfs'].get("BACKBONE_ALPHA")
     binana_features["BPF BETA SIDECHAIN"] = main_binana_out['bpfs'].get("SIDECHAIN_BETA")
@@ -209,7 +215,7 @@ def run_binana(lig, rec):
     binana_features["BPF OTHER SIDECHAIN"] = main_binana_out['bpfs'].get("SIDECHAIN_OTHER")
     binana_features["BPF OTHER BACKBONE"] = main_binana_out['bpfs'].get("BACKBONE_OTHER")
 
-
+    # add hydrophobic features to binana_features
     binana_features["HC ALPHA SIDECHAIN"] = main_binana_out['hydrophobics'].get("SIDECHAIN_ALPHA")
     binana_features["HC ALPHA BACKBONE"] = main_binana_out['hydrophobics'].get("BACKBONE_ALPHA")
     binana_features["HC BETA SIDECHAIN"] = main_binana_out['hydrophobics'].get("SIDECHAIN_BETA")
@@ -217,6 +223,7 @@ def run_binana(lig, rec):
     binana_features["HC OTHER SIDECHAIN"] = main_binana_out['hydrophobics'].get("SIDECHAIN_OTHER")
     binana_features["HC OTHER BACKBONE"] = main_binana_out['hydrophobics'].get("BACKBONE_OTHER")
 
+    # add hydrogen bond features to binana_features
     binana_features["HB ALPHA SIDECHAIN LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_SIDECHAIN_ALPHA")
     binana_features["HB BETA SIDECHAIN LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_SIDECHAIN_BETA")
     binana_features["HB BETA BACKBONE LIGAND"] = main_binana_out['hbonds'].get("HDONOR_LIGAND_BACKBONE_BETA")
@@ -229,10 +236,12 @@ def run_binana(lig, rec):
     binana_features["HB OTHER SIDECHAIN RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_SIDECHAIN_OTHER")
     binana_features["HB OTHER BACKBONE RECEPTOR"] = main_binana_out['hbonds'].get("HDONOR_RECEPTOR_BACKBONE_OTHER")
 
+    # add salt bridge features to binana_features
     binana_features["SB ALPHA"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_ALPHA")
     binana_features["SB BETA"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_BETA")
     binana_features["SB OTHER"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_OTHER")
 
+    # add aromatic stacking features to binana_features
     binana_features["piStack ALPHA"] = main_binana_out['stacking'].get("STACKING ALPHA")
     binana_features["piStack BETA"] = main_binana_out['stacking'].get("STACKING BETA")
     binana_features["piStack OTHER"] = main_binana_out['stacking'].get("STACKING OTHER")
@@ -240,39 +249,42 @@ def run_binana(lig, rec):
     binana_features["tStack BETA"] = main_binana_out['t_stacking'].get("T-SHAPED_BETA")
     binana_features["tStack OTHER"] = main_binana_out['t_stacking'].get("T-SHAPED_OTHER")
 
+    # add cation pi features to binana_features
     binana_features["catPi BETA LIGAND"] = main_binana_out['pi_cation'].get("PI-CATION_LIGAND-CHARGED_BETA")
     binana_features["catPi OTHER LIGAND"] = main_binana_out['pi_cation'].get("PI-CATION_LIGAND-CHARGED_OTHER")
 
+    # add rotatable bond count to binana features
     binana_features["nRot"] = main_binana_out['nrot']
 
+    # return dictionary
     return binana_features
 
 def kier_flexibility(lig):
 
-    ###########################################
-    # Function: Calculate Kier flexibility    #
-    # for ligand                              #
-    #                                         #
-    # Inputs: ligand as a pdbqt string block  #
-    #                                         #
-    # Output: Kier flexibility                #
-    ###########################################
+    """
+    Function: Calculate Kier flexibility    
+    for ligand                              
+                                            
+    Inputs: ligand as a pdbqt string block  
+                                            
+    Output: Kier flexibility                
+    """
 
     mol = kier.SmilePrep(lig)
     return kier.CalculateFlexibility(mol)
 
 def calculate_ecifs(lig, rec):
 
-    ###########################################
-    # Function: Get ECIFs for protein-ligand  #
-    # complex                                 #
-    #                                         #
-    # Inputs: ligand as a pdbqt string block, #
-    # receptor pdbqt filepath                 #
-    #                                         #
-    # Output: ECIF protein-ligand complex     #
-    # descriptor features as a DataFrame      #
-    ###########################################
+    """
+    Function: Get ECIFs for protein-ligand  
+    complex                                 
+                                            
+    Inputs: ligand as a pdbqt string block, 
+    receptor pdbqt filepath                 
+                                            
+    Output: ECIF protein-ligand complex     
+    descriptor features as a DataFrame      
+    """
 
     ECIF_data = GetECIF(rec, lig, distance_cutoff=6.0)
     ECIFHeaders = [header.replace(';','') for header in PossibleECIF]
@@ -283,15 +295,15 @@ def calculate_ecifs(lig, rec):
 
 def extract(lig, rec):
 
-    ###########################################
-    # Function: Get all descriptor features   #
-    # for protein-ligand complex              #
-    #                                         #
-    # Inputs: User defined params dictionary  #
-    #                                         #
-    # Output: All protein-ligand complex      #
-    # descriptor features as a DataFrame      #
-    ###########################################
+    """
+    Function: Get all descriptor features   
+    for protein-ligand complex              
+                                            
+    Inputs: User defined params dictionary  
+                                            
+    Output: All protein-ligand complex      
+    descriptor features as a DataFrame      
+    """
     
     k = kier_flexibility(lig)
     bin = run_binana(lig,rec)
@@ -304,21 +316,19 @@ def extract(lig, rec):
 
 def prune_df_headers(df):
 
-    # TODO move scaling outside loop
-
-    ###########################################
-    # Function: Condense and features for     #
-    # model input                             #
-    #                                         #
-    # Inputs: Full Dataframe of               #
-    # protein-ligand complex descriptors,     #
-    # boolean for single pose model type,     #
-    # boolean for further condensation with   #
-    # principle component analysis            #
-    #                                         #
-    # Output: DataFrame of features for model #
-    # input                                   #
-    ###########################################
+    """
+    Function: Condense and features for     
+    model input                             
+                                            
+    Inputs: Full Dataframe of               
+    protein-ligand complex descriptors,     
+    boolean for single pose model type,     
+    boolean for further condensation with   
+    principle component analysis            
+                                            
+    Output: DataFrame of features for model 
+    input                                   
+    """
 
     reference_headers = json.load(open(os.path.join('utils','params','features.json')))
     headers_58 = reference_headers.get('492_models_58')
@@ -328,15 +338,15 @@ def prune_df_headers(df):
 
 def multiple_pose_check(lig, pose_1):
 
-    ###########################################
-    # Function: Transform ligand.pdbqt        #
-    # poses/models into pdbqt string blocks   #
-    #                                         #
-    # Inputs: ligand.pdbqt filepath           #
-    #                                         #
-    # Output: List of model/pose pdbqt string #
-    # blocks                                  #
-    ###########################################
+    """
+    Function: Transform ligand.pdbqt        
+    poses/models into pdbqt string blocks   
+                                            
+    Inputs: ligand.pdbqt filepath           
+                                            
+    Output: List of model/pose pdbqt string 
+    blocks                                  
+    """
 
     pdbqt_pose_blocks = list()
     lig_text = open(lig, 'r').read()
@@ -358,16 +368,16 @@ def run_networks(df, model_file, model_name):
 
     models_to_load = model_file
 
-    ###########################################
-    # Function: Get prediction from MLP model #
-    # for protein-ligand complex              #
-    #                                         #
-    # Inputs: Number of networks as integer,  #
-    # condensed protein-ligand complex        #
-    # features as DataFrame                   #
-    #                                         #
-    # Output: Float prediction                #
-    ###########################################
+    """
+    Function: Get prediction from MLP model 
+    for protein-ligand complex              
+                                            
+    Inputs: Number of networks as integer,  
+    condensed protein-ligand complex        
+    features as DataFrame                   
+                                            
+    Output: Float prediction                
+    """
 
 
     predictions = pd.DataFrame()
@@ -385,16 +395,16 @@ def run_networks(df, model_file, model_name):
 
 def run_xgboost_models(df):
 
-    ###########################################
-    # Function: Get prediction from XGB model #
-    # for protein-ligand complex              #
-    #                                         #
-    # Inputs: Condensed protein-ligand        #
-    # complex features as DataFrame,          #
-    # boolean for single pose model           #
-    #                                         #
-    # Output: Float prediction                #
-    ###########################################
+    """
+    Function: Get prediction from XGB model 
+    for protein-ligand complex              
+                                            
+    Inputs: Condensed protein-ligand        
+    complex features as DataFrame,          
+    boolean for single pose model           
+                                            
+    Output: Float prediction                
+    """
 
     global xgboost_models
     dtest = xgb.DMatrix(df, feature_names=df.columns)
@@ -404,17 +414,17 @@ def run_xgboost_models(df):
 
 def binary_concat(dfs, headers):
 
-    ###########################################
-    # Function: Concatenate list of           #
-    # dataframes into a single dataframe by   #
-    # sequentially writing to a single binary #
-    # file (removes pd.concat bottleneck)     #
-    #                                         #
-    # Inputs: List of dataframes, dataframe   #
-    # headers as a list                       #
-    #                                         #
-    # Output: Single combined dataframe       #
-    ###########################################
+    """
+    Function: Concatenate list of           
+    dataframes into a single dataframe by   
+    sequentially writing to a single binary 
+    file (removes pd.concat bottleneck)     
+                                            
+    Inputs: List of dataframes, dataframe   
+    headers as a list                       
+                                            
+    Output: Single combined dataframe       
+    """
 
     total_rows = 0
     if not os.path.isdir(os.path.join('utils','temp')):
@@ -437,14 +447,14 @@ def binary_concat(dfs, headers):
 
 def parse_module_args(args_dict):
 
-    ###########################################
-    # Function: Parse user arguments when     #
-    # script is imported as a module          #
-    #                                         #
-    # Inputs: User arguments as a dictionary  #
-    #                                         #
-    # Output: Populated params dictionary     #
-    ###########################################
+    """
+    Function: Parse user arguments when     
+    script is imported as a module          
+                                            
+    Inputs: User arguments as a dictionary  
+                                            
+    Output: Populated params dictionary     
+    """
 
 
     command_input = list()
@@ -465,14 +475,14 @@ def parse_module_args(args_dict):
 
 def parse_args(args):
 
-    ###########################################
-    # Function: Parse user defined command    #
-    # line arguments                          #
-    #                                         #
-    # Inputs: Command line arguments          #
-    #                                         #
-    # Output: Populated params dictionary     #
-    ###########################################
+    """
+    Function: Parse user defined command    
+    line arguments                          
+                                            
+    Inputs: Command line arguments          
+                                            
+    Output: Populated params dictionary     
+    """
 
     params = {}
 
@@ -575,19 +585,19 @@ def prepare_features(receptor_ligand_args):
 
     filterwarnings('ignore')
 
-    ###########################################
-    # Function: Wrapper to prepare            #
-    # all requested protein-ligand            #
-    # complexes/poses for scoring             #
-    #                                         #
-    # Inputs: User defined params dictionary  #
-    # (as global),                            #
-    # dictionary of paired ligand/receptor    #
-    # filepaths                               #
-    #                                         #
-    # Output: Writes results as row to output #
-    # csv file                                #
-    ###########################################
+    """
+    Function: Wrapper to prepare            
+    all requested protein-ligand            
+    complexes/poses for scoring             
+                                            
+    Inputs: User defined params dictionary  
+    (as global),                            
+    dictionary of paired ligand/receptor    
+    filepaths                               
+                                            
+    Output: Writes results as row to output 
+    csv file                                
+    """
 
     complex_params = receptor_ligand_args[0]
     scorch_params = receptor_ligand_args[1]
@@ -637,16 +647,16 @@ def scale_multipose_features(df):
 
 def score(models):
 
-    ###########################################
-    # Function: Score supplied ligands with   #
-    # an individual model                     #
-    #                                         #
-    # Inputs: Tuple of (model_name,           #
-    #                   model_binary_file,    #
-    #                   feature dataframes)   #
-    #                                         #
-    # Output: Dataframe of model predictions  #
-    ###########################################
+    """
+    Function: Score supplied ligands with   
+    an individual model                     
+                                            
+    Inputs: Tuple of (model_name,           
+                      model_binary_file,    
+                      feature dataframes)   
+                                            
+    Output: Dataframe of model predictions  
+    """
 
     model_name = models[0]
 
@@ -671,15 +681,15 @@ def score(models):
 
 def print_intro(params):
 
-    ###########################################
-    # Function: Prints chosen arguments to    #
-    # stdout                                  #
-    #                                         #
-    # Inputs: User command line parameters    #
-    # dictionary                              #
-    #                                         #
-    # Output: None                            #
-    ###########################################
+    """
+    Function: Prints chosen arguments to    
+    stdout                                  
+                                            
+    Inputs: User command line parameters    
+    dictionary                              
+                                            
+    Output: None                            
+    """
 
 
     logging.info('\n')
@@ -702,16 +712,16 @@ def print_intro(params):
 
 def prepare_models(params):
 
-    ###########################################
-    # Function: Loads machine-learning model  #
-    # binaries                                #
-    #                                         #
-    # Inputs: User command line parameters    #
-    # dictionary                              #
-    #                                         #
-    # Output: Dictionary of {model_name:      #
-    #                        model_binary}    #
-    ###########################################
+    """
+    Function: Loads machine-learning model  
+    binaries                                
+                                            
+    Inputs: User command line parameters    
+    dictionary                              
+                                            
+    Output: Dictionary of {model_name:      
+                           model_binary}    
+    """
 
 
     logging.info('**************************************************************************\n')
@@ -749,16 +759,16 @@ def prepare_models(params):
 
 def scoring(params):
 
-    ###########################################
-    # Function: Score protein-ligand          #
-    # complex(es)                             #
-    #                                         #
-    # Inputs: User command line parameters    #
-    # dictionary                              #
-    #                                         #
-    # Output: Dataframe of scoring function   #
-    # predictions                             #
-    ###########################################
+    """
+    Function: Score protein-ligand          
+    complex(es)                             
+                                            
+    Inputs: User command line parameters    
+    dictionary                              
+                                            
+    Output: Dataframe of scoring function   
+    predictions                             
+    """
 
     print_intro(params)
 
