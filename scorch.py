@@ -71,16 +71,6 @@ def run_binana(params, lig, rec):
     # descriptor features as a DataFrame      #
     ###########################################
 
-    if params.okay_to_proceed() == False:
-        logging.critical(
-            "Error: You need to specify the ligand and receptor PDBQT files to analyze using\nthe -receptor and -ligand tags from the command line.\n"
-        )
-        sys.exit(0)
-
-    if params.error != "":
-        logging.warning("Warning: The following command-line parameters were not recognized:")
-        logging.warning(("   " + cmd_params.error + "\n"))
-
     output = binana.Binana(lig, rec, params).out
 
     return binana.parse(output, 0)
