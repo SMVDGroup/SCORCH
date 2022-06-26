@@ -11,42 +11,35 @@
 
 
 # import all libraries and ignore tensorflow warnings
-import xgboost as xgb
-import psutil
-import math
-import contextlib
-import time
-import textwrap
 import os
-os.environ['NUMEXPR_MAX_THREADS'] = '1'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import tensorflow as tf
-tf.get_logger().setLevel('ERROR')
-from tensorflow.keras.models import load_model
-from utils import binana
-from sys import platform
-from utils import kier
-import logging
-from utils.ecifs import *
-from utils.dock_functions import *
-import pandas as pd
-from joblib import Parallel, parallel, delayed, load
-import joblib
 import sys
-from functools import reduce
-import pickle
-import numpy as np
-import shutil
+import math
 import json
+import psutil
+import shutil
+import pickle
+import logging
+import textwrap
+import contextlib
+import numpy as np
+import pandas as pd
 from tqdm import tqdm
-from warnings import filterwarnings
-import warnings
-from itertools import product, chain
+import xgboost as xgb
+import tensorflow as tf
+from utils.ecifs import *
+from functools import reduce
+from utils import binana, kier
+tf.get_logger().setLevel('ERROR')
+from utils.dock_functions import *
 from functools import partialmethod
+from warnings import filterwarnings
+from itertools import product, chain
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from tensorflow.keras.models import load_model
+from joblib import Parallel, parallel, delayed, load
+
+# filter pandas warnings
 filterwarnings('ignore')
-warnings.simplefilter(action='ignore', category=FutureWarning)
-pd.options.mode.chained_assignment = None
-#warnings.simplefilter(action='ignore', category=SettingWithCopyWarning)
 
 # get working directory where scoring function is being deployed
 stem_path = os.getcwd()
@@ -826,9 +819,9 @@ def scoring(params):
 
         pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
 
-        if platform.lower() == 'darwin':
+        if sys.platform.lower() == 'darwin':
             os_name = 'mac'
-        elif 'linux' in platform.lower():
+        elif 'linux' in sys.platform.lower():
             os_name = 'linux'
 
         logging.info("Docking pdbqt ligands...")
