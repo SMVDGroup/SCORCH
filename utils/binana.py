@@ -3205,12 +3205,24 @@ class Binana:
 
         # stacking
         print(stacking)
+        stacking_dict = dict()
+        for pc in stacking:
+            stack_name = '_'.join(pc.split('_')[:-1])
+            stacking_dict[stack_name] = pc.split('_')[-1]
         
         # t-shaped
         print(t_shaped)
+        t_shaped_dict = dict()
+        for pc in t_shaped:
+            stack_name = '_'.join(pc.split('_')[:-1])
+            t_shaped_dict[stack_name] = pc.split('_')[-1]
         
         # pi cations
         print(pi_cation)
+        pi_cation_dict = dict()
+        for pc in pi_cation:
+            stack_name = '_'.join(pc.split('_')[:-1])
+            pi_cation_dict[stack_name] = pc.split('_')[-1]
         
         # salt bridges
         print(salt_bridges)
@@ -3222,9 +3234,9 @@ class Binana:
                   'hbonds':hbonds,
                   'hydrophobics':hydrophobics,
                   'ligand_atoms':ligand_atom_types,
-                  'stacking':stacking,
-                  't_stacking':t_shaped,
-                  'pi_cation':pi_cation,
+                  'stacking':stacking_dict,
+                  't_stacking':t_shaped_dict,
+                  'pi_cation':pi_cation_dict,
                   'salt_bridges':salt_bridges,
                   'nrot':ligand.rotateable_bonds_count
                   }
