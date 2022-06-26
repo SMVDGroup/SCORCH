@@ -484,7 +484,29 @@ def prepare_features(receptor_ligand_args):
         endtime = timedict[time]
         percentchunk = round((((endtime - begintime)/timedict['total_time'])*100), 4)
         # print(f'{time} : {percentchunk}')
-        
+
+def scale_multipose_features(df):
+
+    reference_headers = json.load(open(os.path.join('utils','params','features.json')))
+    scaler_58 = reference_headers.get('for_scaler_58')
+    headers_58 = reference_headers.get('492_models_58')
+
+    ligands, receptors = df['Ligand'], df['Receptor']
+
+    missing_columns = list(set(scaler_58) - set(list(df)))
+
+    for col in missing_columns:
+        df[col] = 0
+
+    df = df[scaler_58]
+    scaler = joblib.load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
+    scaled = scaler.transform(df)
+    df[df.columns] = scaled
+    df = df[headers_58]
+
+    df['Ligand'], df['Receptor'] = ligands, receptors
+    
+    return df
 
 def score(models):
 
@@ -769,6 +791,8 @@ def scoring(params):
         multi_pose_features = pd.concat([pd.read_pickle(os.path.join('utils','temp','binary_features',pickle_file)) for pickle_file in feature_batch])
 
         multi_pose_features.sort_values(by='Ligand').to_csv('update.csv', index=False)
+
+        multi_pose_features = scale_multipose_features(multi_pose_features)
 
         models = prepare_models(params)
         models = list(models.items())
