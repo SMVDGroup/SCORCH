@@ -461,31 +461,25 @@ def prepare_features(receptor_ligand_args):
     # Output: Writes results as row to output #
     # csv file                                #
     ###########################################
-    params = receptor_ligand_args[1]
-    datastore_chunk_id = receptor_ligand_args[2]
-    receptor_ligand_args = receptor_ligand_args[0]
 
+    complex_params = receptor_ligand_args[0]
+    scorch_params = receptor_ligand_args[1]
 
-    receptor = receptor_ligand_args[0]
-    ligand = receptor_ligand_args[1]
+    ligand_pose_number = complex_params[2][0]
+    ligand_pdbqt_block = complex_params[2][1]
 
-    lig_block = receptor_ligand_args[2]
-    head, name = os.path.split(ligand)
-    pose_number = lig_block[0]
-    lig_block = lig_block[1]
+    receptor_filepath = complex_params[0]
+    ligand_filepath = complex_params[1]
+    ligand_basename = os.path.basename(ligand_filepath)
+    ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
+    receptor_basename = os.path.basename(receptor_filepath)
 
-    ligand_name = name.replace('.pdbqt', pose_number)
-    receptor_name = os.path.split(receptor)[-1]
-    params['binana_params'][1] = receptor
-    params['binana_params'][3] = lig_block
-    cmd_params = binana.CommandLineParameters(params['binana_params'].copy())
-
-    features = extract(cmd_params)
+    features = extract(ligand_pdbqt_block, receptor_filepath)
 
     multi_pose_features = transform_df(features)
-    multi_pose_features['Receptor'] = receptor_name
-    multi_pose_features['Ligand'] = ligand_name
-    multi_pose_features.to_pickle(os.path.join('utils','temp','binary_features',f'lig_{datastore_chunk_id}.pkl'))
+    multi_pose_features['Receptor'] = receptor_basename
+    multi_pose_features['Ligand'] = ligand_basename
+    multi_pose_features.to_pickle(os.path.join('utils','temp','binary_features',f'{ligand_basename}.pkl'))
 
 def score(models):
 
