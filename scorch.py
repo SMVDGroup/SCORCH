@@ -584,15 +584,6 @@ def scoring(params):
 
     print_intro(params)
 
-    if len(params['ligand']) == 1:
-        binana_ligand = params['ligand'][0]
-        binana_receptor = params['receptor']
-    else:
-        binana_ligand = os.path.dirname(params['ligand'][0]) + '/'
-        binana_receptor = params['receptor'][0]
-
-    params['binana_params'] = ['-receptor', binana_receptor, '-ligand', binana_ligand]
-
     if params['dock']:
 
         dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
