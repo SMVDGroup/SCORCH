@@ -2575,7 +2575,7 @@ class Binana:
                 receptor_atom = receptor.all_atoms[receptor_atom_index]
 
                 dist = ligand_atom.coordinates.dist_to(receptor_atom.coordinates)
-                if dist < parameters.params["close_contacts_dist1_cutoff"]:
+                if dist < parameters["close_contacts_dist1_cutoff"]:
                     # less than 2.5 A
                     list_ligand_atom = [ligand_atom.atom_type, receptor_atom.atom_type]
                     self.hashtable_entry_add_one(
@@ -2589,7 +2589,7 @@ class Binana:
                         (ligand_atom.string_id(), receptor_atom.string_id())
                     )
 
-                elif dist < parameters.params["close_contacts_dist2_cutoff"]:
+                elif dist < parameters["close_contacts_dist2_cutoff"]:
                     # less than 4 A
                     list_ligand_atom = [ligand_atom.atom_type, receptor_atom.atom_type]
                     self.hashtable_entry_add_one(
@@ -2603,7 +2603,7 @@ class Binana:
                         (ligand_atom.string_id(), receptor_atom.string_id())
                     )
 
-                if dist < parameters.params["electrostatic_dist_cutoff"]:
+                if dist < parameters["electrostatic_dist_cutoff"]:
                     # calculate electrostatic energies for all less than 4 A
                     ligand_charge = ligand_atom.charge
                     receptor_charge = receptor_atom.charge
@@ -2617,7 +2617,7 @@ class Binana:
                         coulomb_energy,
                     )
 
-                if dist < parameters.params["active_site_flexibility_dist_cutoff"]:
+                if dist < parameters["active_site_flexibility_dist_cutoff"]:
                     # Now get statistics to judge active-site flexibility
                     flexibility_key = (
                         receptor_atom.SideChainOrBackBone()
@@ -2642,7 +2642,7 @@ class Binana:
                         active_site_flexibility, flexibility_key
                     )
 
-                if dist < parameters.params["hydrophobic_dist_cutoff"]:
+                if dist < parameters["hydrophobic_dist_cutoff"]:
                     # Now see if there's hydrophobic contacts (C-C contacts)
                     if ligand_atom.element == "C" and receptor_atom.element == "C":
                         hydrophobic_key = (
@@ -2659,7 +2659,7 @@ class Binana:
                             (ligand_atom.string_id(), receptor_atom.string_id())
                         )
 
-                if dist < parameters.params["hydrogen_bond_dist_cutoff"]:
+                if dist < parameters["hydrogen_bond_dist_cutoff"]:
                     # Now see if there's some sort of hydrogen bond between
                     # these two atoms. distance cutoff = 4, angle cutoff = 40.
                     # Note that this is liberal.
@@ -2714,7 +2714,7 @@ class Binana:
                                     * 180.0
                                     / math.pi
                                 )
-                                <= parameters.params["hydrogen_bond_angle_cutoff"]
+                                <= parameters["hydrogen_bond_angle_cutoff"]
                             ):
                                 hbonds_key = (
                                     "HDONOR_"
@@ -2750,7 +2750,7 @@ class Binana:
         # each pi ring. Think of this as adding in a VDW radius, or accounting
         # for poor crystal-structure resolution, or whatever you want to
         # justify it.
-        pi_padding = parameters.params[
+        pi_padding = parameters[
             "pi_padding_dist"
         ]
 
@@ -2770,7 +2770,7 @@ class Binana:
         for aromatic1 in ligand.aromatic_rings:
             for aromatic2 in receptor.aromatic_rings:
                 dist = aromatic1.center.dist_to(aromatic2.center)
-                if dist < parameters.params["pi_pi_interacting_dist_cutoff"]:
+                if dist < parameters["pi_pi_interacting_dist_cutoff"]:
                     # so there could be some pi-pi interactions. first, let's
                     # check for stacking interactions. Are the two pi's
                     # roughly parallel?
@@ -2796,9 +2796,9 @@ class Binana:
 
                     if (
                         math.fabs(angle_between_planes - 0)
-                        < parameters.params["pi_stacking_angle_tolerance"]
+                        < parameters["pi_stacking_angle_tolerance"]
                         or math.fabs(angle_between_planes - 180)
-                        < parameters.params["pi_stacking_angle_tolerance"]
+                        < parameters["pi_stacking_angle_tolerance"]
                     ):
                         # so they're more or less parallel, it's probably
                         # pi-pi stackingoutput_dir now, pi-pi are not usually
@@ -2886,9 +2886,9 @@ class Binana:
 
                     elif (
                         math.fabs(angle_between_planes - 90)
-                        < parameters.params["T_stacking_angle_tolerance"]
+                        < parameters["T_stacking_angle_tolerance"]
                         or math.fabs(angle_between_planes - 270)
-                        < parameters.params["T_stacking_angle_tolerance"]
+                        < parameters["T_stacking_angle_tolerance"]
                     ):
                         # so they're more or less perpendicular, it's probably
                         # a pi-edge interaction
@@ -2912,7 +2912,7 @@ class Binana:
 
                         if (
                             min_dist
-                            <= parameters.params["T_stacking_closest_dist_cutoff"]
+                            <= parameters["T_stacking_closest_dist_cutoff"]
                         ):
                             # so at their closest points, the two rings come
                             # within 5 A of each other.
@@ -2995,7 +2995,7 @@ class Binana:
                     # so only consider positive charges
                     if (
                         charged.coordinates.dist_to(aromatic.center)
-                        < parameters.params["cation_pi_dist_cutoff"]
+                        < parameters["cation_pi_dist_cutoff"]
                     ):
                         # distance cutoff based on "Cation-pi interactions in
                         # structural biology." project the charged onto the
@@ -3057,7 +3057,7 @@ class Binana:
                     # so only consider positive charges
                     if (
                         charged.coordinates.dist_to(aromatic.center)
-                        < parameters.params["cation_pi_dist_cutoff"]
+                        < parameters["cation_pi_dist_cutoff"]
                     ):
                         # distance cutoff based on "Cation-pi interactions in
                         # structural biology." project the charged onto the
@@ -3120,7 +3120,7 @@ class Binana:
                     # so they have oppositve charges
                     if (
                         ligand_charge.coordinates.dist_to(receptor_charge.coordinates)
-                        < parameters.params["salt_bridge_dist_cutoff"]
+                        < parameters["salt_bridge_dist_cutoff"]
                     ):
                         # 4  is good cutoff for salt bridges according to
                         # "Close-Range Electrostatic Interactions in
@@ -3172,14 +3172,14 @@ class Binana:
         # preface = "REMARK "
         preface = ""
         # if an output directory is specified, and it doesn't exist, create it
-        if parameters.params["output_dir"] != "":
-            if not os.path.exists(parameters.params["output_dir"]):
-                os.mkdir(parameters.params["output_dir"])
+        if parameters["output_dir"] != "":
+            if not os.path.exists(parameters["output_dir"]):
+                os.mkdir(parameters["output_dir"])
 
         """'# old output format
         output = ""
-        output = output + "Atom-type pair counts within " + str(parameters.params['close_contacts_dist1_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_two_half) + "\n"
-        output = output + "Atom-type pair counts within " + str(parameters.params['close_contacts_dist2_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_four) + "\n"
+        output = output + "Atom-type pair counts within " + str(parameters['close_contacts_dist1_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_two_half) + "\n"
+        output = output + "Atom-type pair counts within " + str(parameters['close_contacts_dist2_cutoff']) + " : " + str(ligand_receptor_atom_type_pairs_less_than_four) + "\n"
         output = output + "Ligand atom types: " + str(ligand_atom_types) + "\n"
         output = output + "Electrostatic energy by atom-type pair, in J/mol: " + str(ligand_receptor_atom_type_pairs_electrostatic) + "\n"
         output = output + "Number of rotatable bonds in ligand: " + str(ligand.rotateable_bonds_count) + "\n"
@@ -3208,8 +3208,8 @@ class Binana:
             + "\n"
         )
 
-        for key in list(parameters.params.keys()):
-            value = str(parameters.params[key])
+        for key in list(parameters.keys()):
+            value = str(parameters[key])
             output = (
                 output
                 + preface
@@ -3227,7 +3227,7 @@ class Binana:
             output
             + preface
             + "Atom-type pair counts within "
-            + str(parameters.params["close_contacts_dist1_cutoff"])
+            + str(parameters["close_contacts_dist1_cutoff"])
             + " angstroms:"
             + "\n"
         )
@@ -3265,7 +3265,7 @@ class Binana:
             output
             + preface
             + "Atom-type pair counts within "
-            + str(parameters.params["close_contacts_dist2_cutoff"])
+            + str(parameters["close_contacts_dist2_cutoff"])
             + " angstroms:"
             + "\n"
         )
@@ -3612,66 +3612,66 @@ class Binana:
         self.out = output
 
         '''
-        if parameters.params["output_dir"] != "":
+        if parameters["output_dir"] != "":
             # so an output directory has been specified. Write the pdb files
             # out separately
 
             pdb_close_contacts.save_PDB(
-                parameters.params["output_dir"] + "/close_contacts.pdb"
+                parameters["output_dir"] + "/close_contacts.pdb"
             )
-            pdb_contacts.save_PDB(parameters.params["output_dir"] + "/contacts.pdb")
+            pdb_contacts.save_PDB(parameters["output_dir"] + "/contacts.pdb")
             pdb_contacts_alpha_helix.save_PDB(
-                parameters.params["output_dir"] + "/contacts_alpha_helix.pdb"
+                parameters["output_dir"] + "/contacts_alpha_helix.pdb"
             )
             pdb_contacts_beta_sheet.save_PDB(
-                parameters.params["output_dir"] + "/contacts_beta_sheet.pdb"
+                parameters["output_dir"] + "/contacts_beta_sheet.pdb"
             )
             pdb_contacts_other_2nd_structure.save_PDB(
-                parameters.params["output_dir"]
+                parameters["output_dir"]
                 + "/contacts_other_secondary_structure.pdb"
             )
-            pdb_back_bone.save_PDB(parameters.params["output_dir"] + "/back_bone.pdb")
-            pdb_side_chain.save_PDB(parameters.params["output_dir"] + "/side_chain.pdb")
+            pdb_back_bone.save_PDB(parameters["output_dir"] + "/back_bone.pdb")
+            pdb_side_chain.save_PDB(parameters["output_dir"] + "/side_chain.pdb")
             pdb_hydrophobic.save_PDB(
-                parameters.params["output_dir"] + "/hydrophobic.pdb"
+                parameters["output_dir"] + "/hydrophobic.pdb"
             )
-            pdb_hbonds.save_PDB(parameters.params["output_dir"] + "/hydrogen_bonds.pdb")
+            pdb_hbonds.save_PDB(parameters["output_dir"] + "/hydrogen_bonds.pdb")
             pdb_pistack.save_PDB(
-                parameters.params["output_dir"] + "/pi_pi_stacking.pdb"
+                parameters["output_dir"] + "/pi_pi_stacking.pdb"
             )
-            pdb_pi_T.save_PDB(parameters.params["output_dir"] + "/T_stacking.pdb")
-            pdb_pi_cat.save_PDB(parameters.params["output_dir"] + "/cat_pi.pdb")
+            pdb_pi_T.save_PDB(parameters["output_dir"] + "/T_stacking.pdb")
+            pdb_pi_cat.save_PDB(parameters["output_dir"] + "/cat_pi.pdb")
             pdb_salt_bridges.save_PDB(
-                parameters.params["output_dir"] + "/salt_bridges.pdb"
+                parameters["output_dir"] + "/salt_bridges.pdb"
             )
-            ligand.save_PDB(parameters.params["output_dir"] + "/ligand.pdb")
-            receptor.save_PDB(parameters.params["output_dir"] + "/receptor.pdb")
+            ligand.save_PDB(parameters["output_dir"] + "/ligand.pdb")
+            receptor.save_PDB(parameters["output_dir"] + "/receptor.pdb")
 
-            f = open(parameters.params["output_dir"] + "log.txt", "w")
+            f = open(parameters["output_dir"] + "log.txt", "w")
             f.write(output.replace("REMARK ", ""))
             f.close()
 
-            f = open(parameters.params["output_dir"] + "state.vmd", "w")
+            f = open(parameters["output_dir"] + "state.vmd", "w")
             f.write(self.vmd_state_file())
             f.close()
             # TODO: JY put json_file() call here?
         if (
-            parameters.params["output_file"] == ""
-            and parameters.params["output_dir"] == ""
+            parameters["output_file"] == ""
+            and parameters["output_dir"] == ""
         ):
             # so you're not outputing to either a file or a directory
             print((output.replace("REMARK ", "")))
 
-        if parameters.params["output_file"] != "":
+        if parameters["output_file"] != "":
             # so it's writing to a single file.
 
             # first, make an explaination.
 
             explain = (
                 'The residue named "CCN" illustrates close contacts where the protein and ligand atoms come within '
-                + str(parameters.params["close_contacts_dist1_cutoff"])
+                + str(parameters["close_contacts_dist1_cutoff"])
                 + ' of each other. "CON" illustrates close contacts where the protein and ligand atoms come within '
-                + str(parameters.params["close_contacts_dist2_cutoff"])
+                + str(parameters["close_contacts_dist2_cutoff"])
                 + ' of each other. "ALP", "BET", and "OTH" illustrates receptor contacts whose respective protein residues have the alpha-helix, beta-sheet, or "other" secondary structure. "BAC" and "SID" illustrate receptor contacts that are part of the protein backbone and sidechain, respectively. "HYD" illustrates hydrophobic contacts between the protein and ligand. "HBN" illustrates hydrogen bonds. "SAL" illustrates salt bridges. "PIS" illustrates pi-pi stacking interactions, "PIT" illustrates T-stacking interactions, and "PIC" illustrates cation-pi interactions. Protein residue names are unchanged, but the ligand residue is now named "LIG".'
             )
 
@@ -3729,7 +3729,7 @@ class Binana:
                 + "TER\n"
             )
 
-            f = open(parameters.params["output_file"], "w")
+            f = open(parameters["output_file"], "w")
             f.write(output)
             f.close()
         '''
