@@ -692,6 +692,33 @@ def prepare_and_dock_inputs(params):
     
     return params
 
+def parse_ligand_poses(params):
+
+    poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
+
+    if params['pose_1']:
+        poses = [pose[0] for pose in poses]
+        receptor_ligand_args = list(zip(params['receptor'], params['ligand'], poses))
+    else:
+        receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
+        receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
+    
+    return receptor_ligand_args
+
+def calculate_batches_needed(receptor_ligand_args):
+
+    total_poses = len(receptor_ligand_args)
+    estimated_ram_usage = (360540*total_poses) + 644792975
+    available_ram = psutil.virtual_memory().total
+    safe_ram_available = available_ram*0.8
+
+    if estimated_ram_usage > safe_ram_available:
+        batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
+    else:
+        batches_needed = 1
+
+    return batches_needed
+
 def prepare_features(receptor_ligand_args):
 
     filterwarnings('ignore')
@@ -951,24 +978,9 @@ def scoring(params):
 
        params = prepare_and_dock_inputs(params)
 
-    poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
+    receptor_ligand_args = parse_ligand_poses(params)
 
-    if params['pose_1']:
-        poses = [pose[0] for pose in poses]
-        receptor_ligand_args = list(zip(params['receptor'], params['ligand'], poses))
-    else:
-        receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
-        receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
-
-    total_poses = len(receptor_ligand_args)
-    estimated_ram_usage = (360540*total_poses) + 644792975
-    available_ram = psutil.virtual_memory().total
-    safe_ram_available = available_ram*0.8
-
-    if estimated_ram_usage > safe_ram_available:
-        batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
-    else:
-        batches_needed = 1
+    batches_needed = calculate_batches_needed(receptor_ligand_args)
 
     all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
 
