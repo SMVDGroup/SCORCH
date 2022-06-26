@@ -690,7 +690,7 @@ def prepare_and_dock_inputs(params):
     for file in params['ligand']:
         shutil.copy(file, docked_ligands_path)   
     
-    return params
+    return params, smi_dict
 
 def parse_ligand_poses(params):
 
@@ -978,7 +978,7 @@ def scoring(params):
 
     if params['dock']:
 
-       params = prepare_and_dock_inputs(params)
+       params, smi_dict = prepare_and_dock_inputs(params)
 
     receptor_ligand_args = parse_ligand_poses(params)
 
