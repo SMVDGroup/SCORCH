@@ -222,20 +222,19 @@ def run_binana(lig, rec):
     binana_features["SB BETA"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_BETA")
     binana_features["SB OTHER"] = main_binana_out['salt_bridges'].get("SALT-BRIDGE_OTHER")
 
-    binana_features["piStack ALPHA"] = main_binana_out['salt_bridges'].get("STACKING ALPHA")
-    binana_features["piStack BETA"] = pistacks.get("STACKING BETA")
-    binana_features["piStack OTHER"] = pistacks.get("STACKING OTHER")
-    binana_features["tStack ALPHA"] = pistacks.get("T-SHAPED_ALPHA")
-    binana_features["tStack BETA"] = pistacks.get("T-SHAPED_BETA")
-    binana_features["tStack OTHER"] = pistacks.get("T-SHAPED_OTHER")
+    binana_features["piStack ALPHA"] = main_binana_out['stacking'].get("STACKING ALPHA")
+    binana_features["piStack BETA"] = main_binana_out['stacking'].get("STACKING BETA")
+    binana_features["piStack OTHER"] = main_binana_out['stacking'].get("STACKING OTHER")
+    binana_features["tStack ALPHA"] = main_binana_out['t_stacking'].get("T-SHAPED_ALPHA")
+    binana_features["tStack BETA"] = main_binana_out['t_stacking'].get("T-SHAPED_BETA")
+    binana_features["tStack OTHER"] = main_binana_out['t_stacking'].get("T-SHAPED_OTHER")
 
     binana_features["catPi BETA LIGAND"] = main_binana_out['pi_cation'].get("PI-CATION_LIGAND-CHARGED_BETA")
-    binana_features["catPi OTHER LIGAND"] = cation_pis.get("PI-CATION_LIGAND-CHARGED_OTHER")
+    binana_features["catPi OTHER LIGAND"] = main_binana_out['pi_cation'].get("PI-CATION_LIGAND-CHARGED_OTHER")
 
     binana_features["nRot"] = main_binana_out['nrot']
 
     return binana_features
-    return output
 
 def kier_flexibility(lig):
 
