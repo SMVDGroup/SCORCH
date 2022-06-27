@@ -38,7 +38,6 @@ tf.get_logger().setLevel('ERROR')
 from utils.dock_functions import *
 from functools import partialmethod
 from warnings import filterwarnings
-from itertools import product, chain
 from tensorflow.keras.models import load_model
 from joblib import Parallel, parallel, delayed, load
 
@@ -350,7 +349,7 @@ def prune_df_headers(df):
 
     return df
 
-def multiple_pose_check(ligand_filepath, pose_1):
+def multiple_pose_check(ligand_filepath):
 
     """
     Function: Transform ligand.pdbqt        
@@ -584,6 +583,7 @@ def parse_args(args):
             params['num_networks'] = int(args[args.index('-num_networks') + 1])
 
 
+
     except ValueError as e:
         if 'is not in list' in str(e):
             missing = str(e).replace("'",'').replace(' is not in list','')
@@ -692,25 +692,67 @@ def prepare_and_dock_inputs(params):
     
     return params, smi_dict
 
-def parse_ligand_poses(params):
+def count_input_poses(list_of_ligands):
 
-    poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
+    total_poses = 0
 
-    if params['pose_1']:
-        poses = [pose[0] for pose in poses]
-        receptor_ligand_args = list(zip(params['receptor'], params['ligand'], poses))
-    else:
-        receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
-        receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
+    for ligand in tqdm(list_of_ligands):
+
+        ligand_file = open(ligand).read()
+        poses = ligand_file.count('MODEL')
+        if poses == 0:
+            total_poses += 1
+        else:
+            total_poses += poses
+
+    return total_poses
+
+def ligand_pose_generator(params, lower_index, upper_index):
+
+    requested_receptor_ligand_args = list()
+
+    pose_index = 0
+
+    for ligand_index, ligand_filepath in enumerate(params['ligand']):
+
+        if pose_index > upper_index:
+            break
+
+        pdbqt_pose_blocks = list()
+        lig_text = open(ligand_filepath, 'r').read()
+        lig_poses = lig_text.split('MODEL')
+        for pose in lig_poses:
+            lines = pose.split('\n')
+            clean_lines = [line for line in lines if not line.strip().lstrip().isnumeric() and 'ENDMDL' not in line]
+            if len(clean_lines) < 3:
+                pass
+            else:
+                pose = '\n'.join(clean_lines)
+                pdbqt_pose_blocks.append(pose)
+
+        poses = [(f'_pose_{pdbqt_pose_blocks.index(pose) + 1}', pose) for pose in pdbqt_pose_blocks]
+
+        if params['pose_1']:
+            poses = poses[:1]
+
+        for pose in poses:
+                   
+            if lower_index <= pose_index < upper_index:
+            
+                receptor_ligand_args = (params['receptor'][ligand_index], params['ligand'][ligand_index], pose)
+
+                requested_receptor_ligand_args.append(receptor_ligand_args)
     
-    return receptor_ligand_args
+            pose_index += 1
 
-def calculate_batches_needed(receptor_ligand_args):
+    return requested_receptor_ligand_args
 
-    total_poses = len(receptor_ligand_args)
+def calculate_batches_needed(total_poses):
+
+    # estimate the ram usage from empirical data
     estimated_ram_usage = (360540*total_poses) + 644792975
     available_ram = psutil.virtual_memory().total
-    safe_ram_available = available_ram*0.8
+    safe_ram_available = available_ram*0.7
 
     if estimated_ram_usage > safe_ram_available:
         batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
@@ -718,6 +760,16 @@ def calculate_batches_needed(receptor_ligand_args):
         batches_needed = 1
 
     return batches_needed
+
+def list_to_chunk_indexes(list_length, number_of_chunks):
+    indices = list()
+    chunksize = math.ceil(list_length/number_of_chunks)
+    for i in range(0, list_length, chunksize):
+        if i+chunksize < list_length:
+            indices.append((i, i+chunksize))
+        else:
+            indices.append((i, list_length))
+    return indices
 
 def prepare_features(receptor_ligand_args):
 
@@ -836,7 +888,7 @@ def print_intro(params):
     logging.info('**************************************************************************\n')
 
     if not params['dock']:
-        logging.info(f'Parsed {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
+        logging.info(f'Found {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
 
     else:
         ligand_count = open(params["ligand"]).read().split("\n")
@@ -859,7 +911,7 @@ def prepare_models(params):
     """
 
 
-    logging.info('**************************************************************************\n')
+    logging.info('\n**************************************************************************\n')
     logging.info('Model Request Summary:\n')
 
     models = {}
@@ -886,9 +938,6 @@ def prepare_models(params):
     if params['pose_1']:
 
         logging.info('Calculating scores for first pose only in pdbqt file(s)\n')
-
-
-    logging.info('**************************************************************************\n')
 
     return models
 
@@ -980,11 +1029,18 @@ def scoring(params):
 
        params, smi_dict = prepare_and_dock_inputs(params)
 
-    receptor_ligand_args = parse_ligand_poses(params)
+    logging.info('**************************************************************************\n')
+    
+    logging.info('Counting input poses...')
 
-    batches_needed = calculate_batches_needed(receptor_ligand_args)
+    if params['pose_1']:
+        total_poses = len(params['ligand'])
+    else:
+        total_poses = count_input_poses(params['ligand'])
 
-    all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
+    batches_needed = calculate_batches_needed(total_poses)
+
+    ligand_batch_indexes = list_to_chunk_indexes(total_poses, batches_needed)
 
     model_dict = prepare_models(params)
     model_binaries = list(model_dict.items())
@@ -992,10 +1048,16 @@ def scoring(params):
     ligand_scores = list()
 
     logging.info('**************************************************************************\n')
+ 
+    for batch_number, index_range in enumerate(ligand_batch_indexes):
 
-    for batch_number, ligand_batch in enumerate(all_ligands_to_score):
+        logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}\n")
 
-        logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
+        logging.info('**************************************************************************\n')
+
+        logging.info('Loading ligand batch poses...')
+
+        ligand_batch = ligand_pose_generator(params, index_range[0], index_range[1])
         
         merged_results = score_ligand_batch(params, ligand_batch, model_binaries)
 
