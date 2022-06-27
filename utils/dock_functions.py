@@ -24,10 +24,6 @@ RDLogger.DisableLog('rdApp.*')
 
 stem_path = os.getcwd()
 
-def list_to_chunks(list_object, number_of_chunks):
-    for i in range(0, number_of_chunks):
-        yield list_object[i::number_of_chunks]
-
 def get_filepaths(folder_path):
     files = os.listdir(folder_path)
     files = [f'{folder_path}{file}' for file in files]
