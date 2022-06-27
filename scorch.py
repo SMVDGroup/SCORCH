@@ -836,7 +836,7 @@ def print_intro(params):
     logging.info('**************************************************************************\n')
 
     if not params['dock']:
-        logging.info(f'Parsed {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
+        logging.info(f'Found {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
 
     else:
         ligand_count = open(params["ligand"]).read().split("\n")
@@ -980,19 +980,24 @@ def scoring(params):
 
        params, smi_dict = prepare_and_dock_inputs(params)
 
+    from pprint import pprint
+
+    pprint(params)
+
+    input('')
+
     receptor_ligand_args = parse_ligand_poses(params)
 
     batches_needed = calculate_batches_needed(receptor_ligand_args)
 
     all_ligands_to_score = list_to_chunks(receptor_ligand_args, batches_needed)
-
     model_dict = prepare_models(params)
     model_binaries = list(model_dict.items())
 
     ligand_scores = list()
 
     logging.info('**************************************************************************\n')
-
+    print('Scoring batches...')
     for batch_number, ligand_batch in enumerate(all_ligands_to_score):
 
         logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}")
@@ -1014,7 +1019,9 @@ def scoring(params):
 if __name__ == "__main__":
 
     # parse user arguments
+    print('Parsing arguments...')
     params = parse_args(sys.argv)
+    print('Starting scoring...')
 
     # score complexes
     scoring_function_results = scoring(params)
