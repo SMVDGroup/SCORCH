@@ -693,18 +693,32 @@ def prepare_and_dock_inputs(params):
     
     return params, smi_dict
 
-def parse_ligand_poses(params):
+def ligand_pose_generator(params):
 
-    poses = [multiple_pose_check(ligand) for ligand in params['ligand']]
+    for ligand_filepath in params['ligand']:
 
-    if params['pose_1']:
-        poses = [pose[0] for pose in poses]
-        receptor_ligand_args = list(zip(params['receptor'], params['ligand'], poses))
-    else:
-        receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
-        receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
-    
-    return receptor_ligand_args
+        pdbqt_pose_blocks = list()
+        lig_text = open(ligand_filepath, 'r').read()
+        lig_poses = lig_text.split('MODEL')
+        for pose in lig_poses:
+            lines = pose.split('\n')
+            clean_lines = [line for line in lines if not line.strip().lstrip().isnumeric() and 'ENDMDL' not in line]
+            if len(clean_lines) < 3:
+                pass
+            else:
+                pose = '\n'.join(clean_lines)
+                pdbqt_pose_blocks.append(pose)
+
+        poses = list(map(lambda x: (f'_pose_{pdbqt_pose_blocks.index(x) + 1}', x), pdbqt_pose_blocks))
+
+        if params['pose_1']:
+            poses = poses[0]
+            receptor_ligand_args = list(zip(params['receptor'], params['ligand'], poses))
+        else:
+            receptor_ligand_args = list(map(lambda x,y,z: product([x],[y],z),params['receptor'],params['ligand'],poses))
+            receptor_ligand_args = list(chain.from_iterable(receptor_ligand_args))
+        
+        yield receptor_ligand_args
 
 def calculate_batches_needed(receptor_ligand_args):
 
