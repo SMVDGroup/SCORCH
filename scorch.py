@@ -350,7 +350,7 @@ def prune_df_headers(df):
 
     return df
 
-def multiple_pose_check(ligand_filepath, pose_1):
+def multiple_pose_check(ligand_filepath):
 
     """
     Function: Transform ligand.pdbqt        
@@ -568,8 +568,6 @@ def parse_args(args):
 
         elif os.path.isdir(params['ligand']) == True:
             params['ligand'] = [os.path.join(params['ligand'], file) for file in os.listdir(params['ligand'])]
-            receptors = [params['receptor'] for i in range(len(params['ligand']))]
-            params['receptor'] = receptors
             params['screen'] = True
 
         elif '.smi' in params['ligand'] or '.txt' in params['ligand']:
@@ -577,7 +575,6 @@ def parse_args(args):
 
         else:
             params['ligand'] = [params['ligand']]
-            params['receptor'] = [params['receptor']]
             params['single'] = True
 
         if '-num_networks' in args:
@@ -694,7 +691,7 @@ def prepare_and_dock_inputs(params):
 
 def parse_ligand_poses(params):
 
-    poses = list(map(lambda x: multiple_pose_check(x, params['pose_1']), params['ligand']))
+    poses = [multiple_pose_check(ligand) for ligand in params['ligand']]
 
     if params['pose_1']:
         poses = [pose[0] for pose in poses]
