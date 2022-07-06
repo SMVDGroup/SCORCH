@@ -8,4 +8,3 @@ utils/__pycache__/*
 utils/params/dock_settings.json
 *.json
 *.pyc
-*.csv
