@@ -1198,42 +1198,58 @@ def score_ligand_batch(params, ligand_batch, model_binaries):
 
 def create_final_results(params, ligand_scores):
 
+    """
+    Function: Create final results output after batches have been scored
+
+    Inputs:   Parsed command line parameters, list of dataframes of ligand scores
+
+    Outputs:  Single dataframe of final results from whole scoring run
+    """
+
+    # concatenate the ligand scores and calculate the best scoring pose per ligand
     final_ligand_scores = pd.concat(ligand_scores)
     final_ligand_scores['SCORCH_score'] = final_ligand_scores.groupby(['Ligand_ID'])['SCORCH_pose_score'].transform('max')
     final_ligand_scores['best_pose'] = np.where(final_ligand_scores.SCORCH_score == final_ligand_scores.SCORCH_pose_score, 1, 0)
 
+    # if the user doesnt want pose scores then remove all but the best scoring pose
     if not params['return_pose_scores']:
         final_ligand_scores = final_ligand_scores.loc[final_ligand_scores.best_pose == 1]
+
+        # only return specified columns
         final_ligand_scores = final_ligand_scores[['Receptor',
                                                     'Ligand_ID',
                                                     'Pose_Number',
                                                     'SCORCH_score',
                                                     'SCORCH_certainty']].copy()
+
+        # sort the dataframe in order of best ligands first
         final_ligand_scores = final_ligand_scores.sort_values(by='SCORCH_score', ascending=False)
 
+    # if user wants pose scores returned then sort in order of best ligands, and each ligand pose also sorted in order
     else:
         final_ligand_scores = final_ligand_scores.sort_values(by=['SCORCH_score','SCORCH_pose_score'], ascending=False)
-
+    
+    # then round all the scores to 3 decimal places
     numerics = list(final_ligand_scores.select_dtypes(include=[np.number]))
     final_ligand_scores[numerics] = final_ligand_scores[numerics].round(5)
 
+    # return the final results
     return final_ligand_scores
 
 def scoring(params):
 
     """
-    Function: Score protein-ligand          
-    complex(es)                             
+    Function: Score protein-ligand complex(es)                             
                                             
-    Inputs: User command line parameters    
-    dictionary                              
+    Inputs: User command line parameters dictionary                              
                                             
-    Output: Dataframe of scoring function   
-    predictions                             
+    Output: Dataframe of scoring function predictions                             
     """
 
+    # print help/intro if requested
     print_intro(params)
 
+    # prepare and dock smiles if smiles ligands supplied
     if params['dock']:
 
        params, smi_dict = prepare_and_dock_inputs(params)
@@ -1242,22 +1258,29 @@ def scoring(params):
     
     logging.info('Counting input poses...')
 
+    
+    # count input poses
     if params['pose_1']:
         total_poses = len(params['ligand'])
     else:
         total_poses = count_input_poses(params['ligand'])
 
+    # calculate how many scoring batches we need with the system memory available
     batches_needed = calculate_batches_needed(total_poses)
 
+    # calculate pose indexes to score in each batch
     ligand_batch_indexes = list_to_chunk_indexes(total_poses, batches_needed)
 
+    # prepare the models
     model_dict = prepare_models(params)
     model_binaries = list(model_dict.items())
 
+    # empty list for scores from each batch
     ligand_scores = list()
 
     logging.info('**************************************************************************\n')
  
+    # then score ligands in batches
     for batch_number, index_range in enumerate(ligand_batch_indexes):
 
         logging.info(f"Scoring ligand batch {batch_number + 1} of {batches_needed}\n")
@@ -1266,17 +1289,24 @@ def scoring(params):
 
         logging.info('Loading ligand batch poses...')
 
+        # load in ligands to score for this batch
         ligand_batch = ligand_pose_generator(params, index_range[0], index_range[1])
         
+        # score the batch and get the results
         merged_results = score_ligand_batch(params, ligand_batch, model_binaries)
 
+        # add the results to the ligand_scores list
         ligand_scores.append(merged_results)
 
+    # make final results from ligand scores
     final_ligand_scores = create_final_results(params, ligand_scores)
 
+    # if we have docked the ligands then add column for their smiles strings
     if params['dock']:
         final_ligand_scores['Ligand_SMILE'] = final_ligand_scores['Ligand_ID'].map(smi_dict)
 
+
+    # return the final dataframe of ligand scores
     return final_ligand_scores
 
 #######################################################################
