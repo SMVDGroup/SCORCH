@@ -667,6 +667,12 @@ def prepare_and_dock_inputs(params):
     """
     Function: Prepare smiles inputs for scoring by converting
               to pdbqt files and docking with GWOVina
+
+    Inputs:   Parsed command line parameters
+
+    Outputs:  Updated parameters where the ['ligand'] is docked pdbqt versions
+              of supplied smiles strings
+              Dictionary of smiles strings with their identifiers
     """
 
     # load the docking settings
@@ -691,18 +697,22 @@ def prepare_and_dock_inputs(params):
                             float(params['range'][1]),
                             float(params['range'][2]))
             
-            # if this doesn't work 
+            # if this doesn't work then complain and exit
             except:
                 logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
                 sys.exit()
+
+    # if the user has passed a reference ligand 
     else:
         coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
 
+    # make sure all temporary folders exist
     if not os.path.isdir(os.path.join('utils','temp','pdb_files')):
         os.makedirs(os.path.join('utils','temp','pdb_files'))
         os.makedirs(os.path.join('utils','temp','pdbqt_files'))
         os.makedirs(os.path.join('utils','temp','docked_pdbqt_files'))
 
+    # make sure the folders are empty if they exist
     pdbs = get_filepaths(os.path.join('utils','temp','pdb_files',''))
     for pdb in pdbs:
         os.remove(pdb)
@@ -715,31 +725,40 @@ def prepare_and_dock_inputs(params):
     for docked_pdbqt in docked_pdbqts:
         os.remove(docked_pdbqt)
 
+    # load the smiles from the input file as a dictionary
+    # with an identifier as the key and the smile string as the value
     smi_dict = get_smiles(params['ligand'])
 
     logging.info('Generating 3D pdbs from SMILES...')
 
+    # parallelise the conversion of smiles strings to 3D pdbqts with RDKit
     with tqdm_joblib(tqdm(desc="Generating...", total=len(smi_dict))) as progress_bar:
         Parallel(n_jobs=params['threads'])(delayed(make_pdbs_from_smiles)(smi) for smi in smi_dict.items())
 
+    # get a list of all successfully converted pdbs
     pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
 
     logging.info('Converting pdbs to pdbqts...')
 
-    merged_pdb_args = merge_args(os.path.join('utils','MGLTools-1.5.6',''), pdbs)
+    # parallelise conversion of pdbs to pdbqt files
+    with tqdm_joblib(tqdm(desc="Converting...", total=len(pdbs))) as progress_bar:
+        Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_file, os.path.join('utils','MGLTools-1.5.6','')) for pdb_file in pdbs)
 
-    with tqdm_joblib(tqdm(desc="Converting...", total=len(merged_pdb_args))) as progress_bar:
-        Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_arg) for pdb_arg in merged_pdb_args.items())
-
+    # get list of successfully converted pdbqts
     pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
 
+    # get os name
     if sys.platform.lower() == 'darwin':
         os_name = 'mac'
     elif 'linux' in sys.platform.lower():
         os_name = 'linux'
 
     logging.info("Docking pdbqt ligands...")
+
+    # then for each pdbqt
     for pdbqt in tqdm(pdbqts):
+
+        # then dock each one
         dock_file(
                     os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
                     params['receptor'],
@@ -752,27 +771,34 @@ def prepare_and_dock_inputs(params):
                     outfile=os.path.join(f'{stem_path}','utils','temp','docked_pdbqt_files',f'{os.path.split(pdbqt)[1]}')
                     )
 
-
+    # get name of the input smiles file
     if '.' in params['ligand']:
         docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
     else:
         docked_ligands_folder = os.path.basename(params['ligand'])
 
+    # define folder with the input file name to store the docked ligands
     docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
 
-
+    # add each docked ligand in temp file as a ligand to score to the list of ligands in params['ligand']
     params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
+    
+    # build receptor as a repeating list into params dict
     receptors = [params['receptor'] for i in range(len(params['ligand']))]
     params['receptor'] = receptors
 
+    # make sure the docked ligands folder exists
     if not os.path.isdir('docked_ligands'):
         os.mkdir('docked_ligands')
     if not os.path.isdir(docked_ligands_path):
         os.makedirs(docked_ligands_path)
-
+    
+    # copy the docked ligands into a main folder so they are accessible
     for file in params['ligand']:
         shutil.copy(file, docked_ligands_path)   
     
+    # return the updated parameters with docked ligands to score and the
+    # dictionary of ids to smiles strings
     return params, smi_dict
 
 def count_input_poses(list_of_ligands):
