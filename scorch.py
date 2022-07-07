@@ -24,6 +24,7 @@ import psutil
 import shutil
 import pickle
 import logging
+import argparse
 import textwrap
 import contextlib
 import numpy as np
@@ -539,33 +540,12 @@ def parse_args(args):
     Output: Populated params dictionary     
     """
 
+    parser = argparse.ArgumentParser(description="SCORCH 1.0")
+
     # empty params dictionary
     params = {}
-
-    # if -h then print the help string formatted properly
-    if '-h' in args:
-        prefix = "\t\t"
-        expanded_indent = textwrap.fill(prefix+'$', replace_whitespace=False)[:-1]
-        subsequent_indent = ' ' * len(expanded_indent)
-        wrapper = textwrap.TextWrapper(initial_indent=prefix,
-                                       subsequent_indent=subsequent_indent)
-        with open(os.path.join('utils','help_string.txt')) as help_string:
-            help = help_string.read()
-            for line in help.split('\n'):
-                if line.isupper():
-                    print(line)
-                elif  '-' in line:
-                    print(line)
-                else:
-                    print(wrapper.fill(line))
-        # exit after printing help
-        sys.exit()
     
-    # try to parse the arguments passed by the user
-    try:
-        # get essential ligand and receptor arguments
-        params['ligand'] = args[args.index('-ligand') + 1]
-        params['receptor'] = args[args.index('-receptor') + 1]
+    parser.add_argument('-l','--ligand', )
         try:
             params['threads'] = int(args[args.index('-threads') + 1])
         except:
