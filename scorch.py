@@ -1017,7 +1017,7 @@ def scale_multipose_features(df):
     # return the dataframe
     return df
 
-def score(models):
+def score(models, features):
 
     """
     Function: Score supplied ligands with   
@@ -1033,7 +1033,6 @@ def score(models):
     # get the variables out of the tuple
     model_name = models[0]
     model_file = models[1]
-    features = models[2]
 
     logging.info(f'Scoring with {model_name}...')
 
@@ -1097,16 +1096,18 @@ def prepare_models(params):
                            model_binary}    
     """
 
-
     logging.info('\n**************************************************************************\n')
     logging.info('Model Request Summary:\n')
 
+    # empty dictionary to store models
     models = {}
 
+    # load xgboost model
     logging.info('XGBoost Model: Yes')
     xgb_path = os.path.join('utils','models','xgboost_models','495_models_58_booster.pkl')
     models['xgboost_model'] = pickle.load(open(xgb_path,'rb'))
 
+    # load best 15 neural network models for WD models and feedforward models
     logging.info('Feedforward NN Model : Yes')
     logging.info(f'- Using Best {params["num_networks"]} Networks')
     models['ff_nn'] = os.path.join('utils','models','ff_nn_models')
@@ -1126,52 +1127,73 @@ def prepare_models(params):
 
         logging.info('Calculating scores for first pose only in pdbqt file(s)\n')
 
+    # return dictionary of model binaries
     return models
 
 def score_ligand_batch(params, ligand_batch, model_binaries):
 
+    """
+    Function:  Make a dataframe of scores and stats for a batch of
+               ligands
+
+    Inputs:    Parsed command line parameters, batch of receptor ligand tuples,
+               and the binary files for the models to use
+    
+    Outputs:   Dataframe of scores and stats for ligands in the batch
+    """
+
+    # multiprocess the extracting of features from the protein ligand pairs
     with tqdm_joblib(tqdm(desc="Preparing features", total=len(ligand_batch))) as progress_bar:
         multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
 
+    # concatenate all the produced features
     multi_pose_features = pd.concat(multi_pose_features)
 
+    # scale the features
     multi_pose_features = scale_multipose_features(multi_pose_features)
 
-    models = [(m[0], m[1], multi_pose_features) for m in model_binaries]
+    # load the models
+    models = [(m[0], m[1]) for m in model_binaries]
 
     model_results = list()
 
     logging.info('**************************************************************************\n')
 
+    # score the features and add dataframe of results to list
     for model in models:
-        model_results.append(score(model))
+        model_results.append(score(model, multi_pose_features))
         logging.info('Done!')
 
     logging.info('**************************************************************************\n')
 
+    # merge the results into one dataframe
     merged_results = reduce(lambda x, y: pd.merge(x, y, on = ['Receptor','Ligand']), model_results)
 
+    # create main scorch score by taking mean of model scores
     multi_models = ['xgboost_model',
                     'ff_nn_models_average',
                     'wd_nn_models_average']
-
     merged_results['SCORCH_pose_score'] = merged_results[multi_models].mean(axis=1)
+
+    # calculate scorch certainty score
     max_std = 0.4714 # result from [0, 0, 1] or [1, 1, 0]
     minimum_val = 1 - max_std
-    
     merged_results['SCORCH_stdev'] = merged_results[multi_models].std(axis=1, ddof=0)
     merged_results['SCORCH_certainty'] = ((1-merged_results['SCORCH_stdev'])-minimum_val)/max_std
 
+    # subset only columns we want
     merged_results = merged_results[['Receptor',
                                         'Ligand',
                                         'SCORCH_pose_score',
                                         'SCORCH_certainty']].copy()
 
+    # add ligand id and pose number columns
     merged_results['Ligand_ID'] = merged_results['Ligand'].apply(lambda x: x.split('_pose')[0])
     merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
 
     del merged_results['Ligand']
 
+    # return final dataframe of results
     return merged_results
 
 def create_final_results(params, ligand_scores):
