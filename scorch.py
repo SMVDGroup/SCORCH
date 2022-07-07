@@ -803,30 +803,65 @@ def prepare_and_dock_inputs(params):
 
 def count_input_poses(list_of_ligands):
 
+    """
+    Function: Count the total number of poses across
+              all ligands that need scoring
+
+    Inputs:   List of ligand pdbqt files
+
+    Outputs:  Total poses to score as integer
+    """
+
+    # set up count
     total_poses = 0
 
+    # then for each ligand
     for ligand in tqdm(list_of_ligands):
-
+        
+        # open it and count the number of models
         ligand_file = open(ligand).read()
         poses = ligand_file.count('MODEL')
+
+        # add the poses to total pose count
         if poses == 0:
             total_poses += 1
         else:
             total_poses += poses
 
+    # return integer of total poses
     return total_poses
 
 def ligand_pose_generator(params, lower_index, upper_index):
 
+    """
+    Function: Generate a list of receptor and ligand arguments
+              between specific indices to pass to a function to be scored.
+              This is necessary because if we do this at the start, if
+              many ligands are being scored we cannot store them all in 
+              memory and the script crashes
+
+    Inputs:   Command line arguments, the lower and upper indexes
+              of ligand poses to score
+
+    Outputs:  List of tuples to score in the form
+              [(receptor filename, ligand filename, (ligand pose number, ligand pdbqt block))]
+    """
+
+    # set up list to populate
     requested_receptor_ligand_args = list()
 
+    # track the pose index
     pose_index = 0
 
+    # then for each ligand
     for ligand_index, ligand_filepath in enumerate(params['ligand']):
 
+         
+         # don't waste any time if we're already over the upper index
         if pose_index > upper_index:
             break
 
+        # load the poses from the current ligand being considered
         pdbqt_pose_blocks = list()
         lig_text = open(ligand_filepath, 'r').read()
         lig_poses = lig_text.split('MODEL')
@@ -839,45 +874,88 @@ def ligand_pose_generator(params, lower_index, upper_index):
                 pose = '\n'.join(clean_lines)
                 pdbqt_pose_blocks.append(pose)
 
+                # stop if we only want one pose
+                if params['pose_1']:
+                    break
+
+        # make a tuple with pdbqt block and pose name
         poses = [(f'_pose_{pdbqt_pose_blocks.index(pose) + 1}', pose) for pose in pdbqt_pose_blocks]
 
-        if params['pose_1']:
-            poses = poses[:1]
-
+        # for each pose
         for pose in poses:
-                   
+            
+            # if the pose is one we want
             if lower_index <= pose_index < upper_index:
             
-                receptor_ligand_args = (params['receptor'][ligand_index], params['ligand'][ligand_index], pose)
+                # add it to the receptor ligand arguments
+                receptor_ligand_args = (params['receptor'][ligand_index], ligand_filepath, pose)
 
                 requested_receptor_ligand_args.append(receptor_ligand_args)
     
+            # update the pose index
             pose_index += 1
 
+    # return the requested poses between the specified indexes
     return requested_receptor_ligand_args
 
 def calculate_batches_needed(total_poses):
+
+    """
+    Function: Calculate how many batches the ligands
+              need to be scored in with the available
+              memory
+    
+    Input:    Total number of poses as an integer
+
+    Output:   Number of batches to split the ligand poses into
+    """
 
     # estimate the ram usage from empirical data
     estimated_ram_usage = (360540*total_poses) + 644792975
     available_ram = psutil.virtual_memory().total
     safe_ram_available = available_ram*0.7
 
+    # use this info to split the batches into least possible
+    # batches without getting a memory error
     if estimated_ram_usage > safe_ram_available:
         batches_needed = math.ceil(estimated_ram_usage/safe_ram_available)
     else:
         batches_needed = 1
 
+    # return batch number as integer
     return batches_needed
 
+
 def list_to_chunk_indexes(list_length, number_of_chunks):
+
+    """
+    Function: Create nested list of upper and lower indexes
+              which relate to batches of input list
+
+    Inputs:   List length (integer) and number of batches
+
+    Outputs:  Nested list of chained indexes e.g.
+              [(0, 573),(573, 1092)]
+    """
+
+    # set up list to populate
     indices = list()
+
+    # get the size of each batch
     chunksize = math.ceil(list_length/number_of_chunks)
+
+    # then for each chunk taking chunksize steps
     for i in range(0, list_length, chunksize):
+
+        # if its the last chunk then it ends at the end of the list
         if i+chunksize < list_length:
             indices.append((i, i+chunksize))
+
+        # otherwise it spans one chunksize chunk
         else:
             indices.append((i, list_length))
+
+    # return list of indices
     return indices
 
 def prepare_features(receptor_ligand_args):
@@ -885,40 +963,51 @@ def prepare_features(receptor_ligand_args):
     filterwarnings('ignore')
 
     """
-    Function: Wrapper to prepare            
-    all requested protein-ligand            
-    complexes/poses for scoring             
+    Function: Wrapper to prepare all requested protein-ligand            
+              complexes/poses for scoring             
                                             
-    Inputs: User defined params dictionary  
-    (as global),                            
-    dictionary of paired ligand/receptor    
-    filepaths                               
+    Inputs:   A tuple of a receptor ligand pair to score                            
                                             
-    Output: Writes results as row to output 
-    csv file                                
+    Output:   A single row dataframe of protein-ligand complex
+              features                      
     """
 
+    # grab the ligand pose number and pdbqt string block
     ligand_pose_number = receptor_ligand_args[2][0]
     ligand_pdbqt_block = receptor_ligand_args[2][1]
-
+     
+    # grab the ligand and receptor filepaths and filenames
     receptor_filepath = receptor_ligand_args[0]
     ligand_filepath = receptor_ligand_args[1]
     ligand_basename = os.path.basename(ligand_filepath)
     ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
     receptor_basename = os.path.basename(receptor_filepath)
 
+    # extract the interaction features
     features = extract(ligand_pdbqt_block, receptor_filepath)
 
+    # prune the headers down to those needed for model scoring
     multi_pose_features = prune_df_headers(features)
 
+    # fill None values with 0 for binana features
     multi_pose_features.fillna(0, inplace=True)
 
+    # add receptor and ligand info to features
     multi_pose_features['Receptor'] = receptor_basename
     multi_pose_features['Ligand'] = ligand_basename
     
+    # return the dataframe
     return multi_pose_features
 
 def scale_multipose_features(df):
+
+    """
+    Function: Scale features using prefitted feature scaler
+
+    Input:    Dataframe of features to scale
+
+    Output:   Scaled dataframe of features
+    """
 
     reference_headers = json.load(open(os.path.join('utils','params','features.json')))
     scaler_58 = reference_headers.get('for_scaler_58')
