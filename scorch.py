@@ -435,28 +435,6 @@ def run_networks(df, models_to_load, model_name):
     # return the df of predictions
     return predictions
 
-def run_xgboost_models(df):
-
-    """
-    Function: Get prediction from XGB model 
-    for protein-ligand complex              
-                                            
-    Inputs: Condensed protein-ligand        
-    complex features as DataFrame         
-                                            
-    Output: Array of predictions                
-    """
-
-    # use preloaded xgboost model
-    global xgboost_models
-
-    # make data into dmatrix
-    dtest = xgb.DMatrix(df, feature_names=df.columns)
-
-    # get and return array of predictions
-    prediction = xgboost_models.predict(dtest)
-    return prediction
-
 
 def binary_concat(dfs, headers):
 
@@ -1009,25 +987,34 @@ def scale_multipose_features(df):
     Output:   Scaled dataframe of features
     """
 
+    # open the reference features file
     reference_headers = json.load(open(os.path.join('utils','params','features.json')))
     scaler_58 = reference_headers.get('for_scaler_58')
     headers_58 = reference_headers.get('492_models_58')
 
+    # store the ligand and receptor information
     ligands, receptors = df['Ligand'], df['Receptor']
 
+    # get the missing columns that the scaler expects
     missing_columns = list(set(scaler_58) - set(list(df)))
 
+    # fill in dummy columns for the scaler
     for col in missing_columns:
         df[col] = 0
-
     df = df[scaler_58]
+
+    # load the scaler and scale the data
     scaler = load(os.path.join('utils','params','58_maxabs_scaler_params.save'))
     scaled = scaler.transform(df)
     df[df.columns] = scaled
+
+    # then only keep the columns we want for the models
     df = df[headers_58]
 
+    # add the receptor and ligand info back in
     df['Ligand'], df['Receptor'] = ligands, receptors
 
+    # return the dataframe
     return df
 
 def score(models):
@@ -1043,17 +1030,18 @@ def score(models):
     Output: Dataframe of model predictions  
     """
 
+    # get the variables out of the tuple
     model_name = models[0]
-
     model_file = models[1]
-
     features = models[2]
 
     logging.info(f'Scoring with {model_name}...')
 
+    # create results and features dataframe
     results = features[['Ligand','Receptor']].copy().reset_index(drop=True)
     df = features.drop(['Ligand','Receptor'], axis=1)
 
+    # get the model scores for each row in the dataframe
     if 'xgb' in model_name:
         dtest = xgb.DMatrix(df, feature_names=df.columns)
         results[model_name] = model_file.predict(dtest)
@@ -1062,6 +1050,7 @@ def score(models):
         network_predictions = run_networks(df, model_file, model_name)
         results[network_predictions.columns] = network_predictions[network_predictions.columns]
 
+    # return prediction results
     return results
 
 def print_intro(params):
