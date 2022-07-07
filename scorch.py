@@ -271,7 +271,10 @@ def kier_flexibility(ligand_pdbqt_block):
     Output: Kier flexibility                
     """
 
+    # parse pdbqt block
     mol = kier.SmilePrep(ligand_pdbqt_block)
+
+    # calculate flexibility
     return kier.CalculateFlexibility(mol)
 
 def calculate_ecifs(ligand_pdbqt_block, receptor_filepath):
@@ -284,14 +287,21 @@ def calculate_ecifs(ligand_pdbqt_block, receptor_filepath):
     receptor pdbqt filepath                 
                                             
     Output: ECIF protein-ligand complex     
-    descriptor features as a DataFrame      
+    descriptor features as a pandas DataFrame      
     """
 
+    # get ECIFs with default cutoff using imported functions
+    # from utils/ecifs.py
     ECIF_data = GetECIF(receptor_filepath, ligand_pdbqt_block, distance_cutoff=6.0)
+
+    # replace the semicolons to make valid dataframe headers
     ECIFHeaders = [header.replace(';','') for header in PossibleECIF]
+
+    # zip into a dictionary and convert to dataframe
     ECIF_data = dict(zip(ECIFHeaders,ECIF_data))
     ECIF_df = pd.DataFrame(ECIF_data,index=[0])
 
+    # return the dataframe
     return ECIF_df
 
 def extract(ligand_pdbqt_block, receptor_filepath):
@@ -307,93 +317,123 @@ def extract(ligand_pdbqt_block, receptor_filepath):
     descriptor features as a DataFrame      
     """
     
+    # get the kier flexibility
     k = kier_flexibility(ligand_pdbqt_block)
+
+    # get the binana descriptors and build into dataframe
     binana_dict = run_binana(ligand_pdbqt_block,receptor_filepath)
     binana_df = pd.DataFrame([binana_dict])
+
+    # get the ECIFs
     ECIF = calculate_ecifs(ligand_pdbqt_block, receptor_filepath)
+
+    # concatenate all feature columns to one row dataframe
     df = pd.concat([ECIF,binana_df],axis=1)
+
+    # add the kier flexibility as a column
     df['Kier Flexibility'] = k
 
+    # return the features
     return df
 
 def prune_df_headers(df):
 
     """
-    Function: Condense and features for     
-    model input                             
+    Function: Condense features for model input                             
                                             
     Inputs: Full Dataframe of               
-    protein-ligand complex descriptors,     
-    boolean for single pose model type,     
-    boolean for further condensation with   
-    principle component analysis            
+    protein-ligand complex descriptors     
                                             
-    Output: DataFrame of features for model 
-    input                                   
+    Output: DataFrame of features for model input                                   
     """
 
+    # load features we want in the correct order
     reference_headers = json.load(open(os.path.join('utils','params','features.json')))
     headers_58 = reference_headers.get('492_models_58')
+
+    # subset the dataframe of features
     df = df[headers_58]
 
+    # return the dataframe
     return df
 
 def multiple_pose_check(ligand_filepath):
 
     """
-    Function: Transform ligand.pdbqt        
+    Function: Transform ligand.pdbqt file of      
     poses/models into pdbqt string blocks   
                                             
     Inputs: ligand.pdbqt filepath           
                                             
     Output: List of model/pose pdbqt string 
-    blocks                                  
+    blocks as a tuple with the pose number
+    e.g. [('_pose_1','REMARK....)]                                 
     """
 
+    # make empty list for populating
     pdbqt_pose_blocks = list()
+
+    # open the input ligand file
     lig_text = open(ligand_filepath, 'r').read()
+
+    # split by poses
     lig_poses = lig_text.split('MODEL')
+
+    # for each pose clean up any whitespace or empty lines
     for pose in lig_poses:
         lines = pose.split('\n')
         clean_lines = [line for line in lines if not line.strip().lstrip().isnumeric() and 'ENDMDL' not in line]
+
+        # if there are less than three lines then
+        # its an artefact of the splitting and we ignore 
         if len(clean_lines) < 3:
             pass
+
+        # otherwise join up the correct poses
         else:
             pose = '\n'.join(clean_lines)
+
+            # add the pose to the list of poses
             pdbqt_pose_blocks.append(pose)
 
+    # map the poses into a list of tuples
     pdbqt_pose_blocks = list(map(lambda x: (f'_pose_{pdbqt_pose_blocks.index(x) + 1}', x), pdbqt_pose_blocks))
 
+    # return the list of tuples
     return pdbqt_pose_blocks
 
-def run_networks(df, model_file, model_name):
-
-    models_to_load = model_file
+def run_networks(df, models_to_load, model_name):
 
     """
-    Function: Get prediction from MLP model 
-    for protein-ligand complex              
+    Function: Get single mean prediction from consensus of 
+    neural network models for a protein-ligand complex              
                                             
-    Inputs: Number of networks as integer,  
-    condensed protein-ligand complex        
-    features as DataFrame                   
-                                            
-    Output: Float prediction                
+    Inputs: Dataframe of features for model,
+            list of model filenames to load,
+            model name string for prediction columns
+
+    Output: Dataframe of model predictions with 
+            final average mean column              
     """
 
-
+    # make empty dataframe to populate wit predictions
     predictions = pd.DataFrame()
-    model_columns = list()
 
+    # for each model
     for i in tqdm(range(len(models_to_load))):
+
+        # load the model and get its prediction on the data
         model = load_model(models_to_load[i])
         y_pred = model.predict(df)
-        model_columns.append(f'{model_name}_{i + 1}')
+
+        # add the prediction as a column to the predictions df
         predictions[f'{model_name}_{i + 1}'] = y_pred.flatten()
 
-    predictions[f'{model_name}_models_average'] = predictions[model_columns].mean(axis=1)
+    # take an average of all the predictions
+    predictions[f'{model_name}_models_average'] = predictions.mean(axis=1)
 
-    return predictions.reset_index(drop=True)
+    # return the df of predictions
+    return predictions
 
 def run_xgboost_models(df):
 
@@ -402,14 +442,18 @@ def run_xgboost_models(df):
     for protein-ligand complex              
                                             
     Inputs: Condensed protein-ligand        
-    complex features as DataFrame,          
-    boolean for single pose model           
+    complex features as DataFrame         
                                             
-    Output: Float prediction                
+    Output: Array of predictions                
     """
 
+    # use preloaded xgboost model
     global xgboost_models
+
+    # make data into dmatrix
     dtest = xgb.DMatrix(df, feature_names=df.columns)
+
+    # get and return array of predictions
     prediction = xgboost_models.predict(dtest)
     return prediction
 
@@ -428,23 +472,50 @@ def binary_concat(dfs, headers):
     Output: Single combined dataframe       
     """
 
+    # set total rows count
     total_rows = 0
+
+    # make temporary directory for binary file if it
+    # doesn't exist yet
     if not os.path.isdir(os.path.join('utils','temp')):
         os.makedirs(os.path.join('utils','temp'))
 
+    # create a temporary binary file
     with open(os.path.join('utils','temp','features.bin'),'wb+') as binary_store:
+
+        # then for each dataframe write it to binary
         for df in dfs:
+
+            # make sure nRot is numeric in type
             df['nRot'] = pd.to_numeric(df['nRot'])
+
+            # get the rows and columns of the dataframe
             rows, fixed_total_columns = df.shape
+
+            # add the rows to total rows counter
             total_rows += rows
+
+            # write the df to the binary store file
             binary_store.write(df.values.tobytes())
+
+            # store the dtypes
             typ = df.values.dtype
 
+    # open the temporary binary file
     with open(os.path.join('utils','temp','features.bin'),'rb') as binary_store:
+
+        # read the binary file
         buffer = binary_store.read()
+
+        # shape the data into a dataframe using the info from
+        # when we wrote all the files to the binary store
         data = np.frombuffer(buffer, dtype=typ).reshape(total_rows, fixed_total_columns)
         master_df = pd.DataFrame(data = data, columns = headers)
+
+    # make sure the binary store is deleted in case we call the function again
     os.remove(os.path.join('utils','temp','features.bin'))
+
+    # return the concatenated dataframe
     return master_df
 
 def parse_module_args(args_dict):
@@ -458,21 +529,25 @@ def parse_module_args(args_dict):
     Output: Populated params dictionary     
     """
 
-
+    # empty list to use as a spoof sys.argv result
     command_input = list()
 
+    # check if any boolean flag arguments have been passed
     boolean_args = ['verbose','return_pose_scores']
-
     for key, value in args_dict.items():
         if key in boolean_args:
             if value:
                 command_input.append(f'-{key}')
+        
+        # otherwise add them as normal args with their values
         else:
             command_input.append(f'-{key}')
             command_input.append(str(value))
 
+    # then parse the args as if they were command line
     parsed_args = parse_args(command_input)
 
+    # return the arguments
     return parsed_args
 
 def parse_args(args):
@@ -486,8 +561,10 @@ def parse_args(args):
     Output: Populated params dictionary     
     """
 
+    # empty params dictionary
     params = {}
 
+    # if -h then print the help string formatted properly
     if '-h' in args:
         prefix = "\t\t"
         expanded_indent = textwrap.fill(prefix+'$', replace_whitespace=False)[:-1]
@@ -503,9 +580,12 @@ def parse_args(args):
                     print(line)
                 else:
                     print(wrapper.fill(line))
+        # exit after printing help
         sys.exit()
-
+    
+    # try to parse the arguments passed by the user
     try:
+        # get essential ligand and receptor arguments
         params['ligand'] = args[args.index('-ligand') + 1]
         params['receptor'] = args[args.index('-receptor') + 1]
         try:
@@ -584,12 +664,24 @@ def parse_args(args):
 
 def prepare_and_dock_inputs(params):
 
+    """
+    Function: Prepare smiles inputs for scoring by converting
+              to pdbqt files and docking with GWOVina
+    """
+
+    # load the docking settings
     dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
 
+    # check there has been a binding site location passed to use for docking
     if params['ref_lig'] is None:
         if params['center'] is None and params['range'] is None:
+
+            # if not then complain and exit
             logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- supplying a reference ligand")
             sys.exit()
+
+        # if center and range have been supplied then parse them into
+        # coordinates variable
         else:
             try:
                 coords = (float(params['center'][0]),
@@ -598,6 +690,8 @@ def prepare_and_dock_inputs(params):
                             float(params['range'][0]),
                             float(params['range'][1]),
                             float(params['range'][2]))
+            
+            # if this doesn't work 
             except:
                 logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
                 sys.exit()
