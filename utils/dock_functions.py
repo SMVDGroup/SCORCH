@@ -119,11 +119,7 @@ def dock_file(docker_command, protein_filepath, ligand_filepath, center_x, cente
     os.system(f'{docker_command} --receptor {protein_filepath} --ligand {ligand_filepath}  --center_x  {center_x} --center_y {center_y} --center_z {center_z} --size_x  {size_x} --size_y {size_y}  --size_z {size_z}' \
               f' --exhaustiveness={ex} --num_wolves={nw} --num_modes={nm} --energy_range={er} --out {outfile} >&2')
 
-def autodock_convert(merged_tuple_filepaths): # converts files from .pdb format to .pdbqt format using AutoDockTools
-
-    ligand_filename = merged_tuple_filepaths[0]
-
-    mgl_tools_path = merged_tuple_filepaths[1]
+def autodock_convert(ligand_filename, mgl_tools_path): # converts files from .pdb format to .pdbqt format using AutoDockTools
 
     ligand_filepath = os.path.join(os.path.dirname(__file__),'temp','pdb_files',ligand_filename)
 
