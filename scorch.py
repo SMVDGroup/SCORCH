@@ -75,17 +75,6 @@ def tqdm_joblib(tqdm_object):
         parallel.Parallel.print_progress = original_print_progress
         tqdm_object.close()
 
-def get_ligand_id(ligand):
-    """
-    Function: Get ligand ID from pose scores
-                                            
-    Inputs: Ligand pose name                
-                                            
-    Output: Ligand ID base name             
-    """
-
-    Ligand_ID = ligand.split('_pose')[0]
-    return Ligand_ID
 
 def run_binana(ligand_pdbqt_block, receptor_filepath):
 
@@ -980,7 +969,7 @@ def score_ligand_batch(params, ligand_batch, model_binaries):
                                         'SCORCH_pose_score',
                                         'SCORCH_certainty']].copy()
 
-    merged_results['Ligand_ID'] = merged_results['Ligand'].apply(get_ligand_id)
+    merged_results['Ligand_ID'] = merged_results['Ligand'].apply(lambda x: x.split('_pose')[0])
     merged_results['Pose_Number'] = merged_results['Ligand'].apply(lambda x: x.split('_pose_')[-1])
 
     del merged_results['Ligand']
