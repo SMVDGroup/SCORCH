@@ -424,6 +424,9 @@ exhaustive_ECIFs = ['C;4;1;3;0;0-Br;1;1;0;0;0',
                     'S;2;2;0;0;0-O;2;1;0;0;0',
                     'S;2;2;0;0;0-O;2;1;1;0;0']
 
+exhaustive_Ligand_Atoms = [p.split('-')[1] for p in exhaustive_ECIFs]
+
+exhaustive_Protein_Atoms = [p.split('-')[0] for p in exhaustive_ECIFs]
 
 PossibleECIF = [i[0]+"-"+i[1] for i in product(ECIF_ProteinAtoms, ECIF_LigandAtoms)]
 
@@ -545,13 +548,14 @@ def GetPLPairs(PDB_protein, SDF_ligand, distance_cutoff):
         Target = Target[Target[i] < float(Ligand[i].max())+distance_cutoff]
         Target = Target[Target[i] > float(Ligand[i].min())-distance_cutoff]
 
+    # Remove any atoms we don't use to speed efficiency
+    Target = Target.loc[Target.ECIF_ATOM_TYPE.isin(exhaustive_Protein_Atoms)]
+    Ligand = Ligand.loc[Ligand.ECIF_ATOM_TYPE.isin(exhaustive_Ligand_Atoms)]
+
     # Get all possible pairs
     Pairs = list(product(Target["ECIF_ATOM_TYPE"], Ligand["ECIF_ATOM_TYPE"]))
     Pairs = [x[0]+"-"+x[1] for x in Pairs]
     Pairs = pd.DataFrame(Pairs, columns=["ECIF_PAIR"])
-
-    # Remove any pairs we don't use to speed efficiency
-    Pairs = Pairs.loc[Pairs.ECIF_PAIR.isin(exhaustive_ECIFs)]
 
     # calculate distances
     Distances = cdist(Target[["X","Y","Z"]], Ligand[["X","Y","Z"]], metric="euclidean")
@@ -560,6 +564,8 @@ def GetPLPairs(PDB_protein, SDF_ligand, distance_cutoff):
 
     Pairs = pd.concat([Pairs,Distances], axis=1)
     Pairs = Pairs[Pairs["DISTANCE"] <= distance_cutoff].reset_index(drop=True)
+
+    # remove element pair counts as we don't use them
     # Pairs from ELEMENTS could be easily obtained froms pairs from ECIF
     # Pairs["ELEMENTS_PAIR"] = [x.split("-")[0].split(";")[0]+"-"+x.split("-")[1].split(";")[0] for x in Pairs["ECIF_PAIR"]]
     return Pairs
