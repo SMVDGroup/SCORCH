@@ -15,6 +15,7 @@ The University of Edinburgh
 # import os and set tensorflow verbosity
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['NUMEXPR_MAX_THREADS'] = '1'
 
 # import other libraries
 import sys
