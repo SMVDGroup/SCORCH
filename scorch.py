@@ -542,14 +542,13 @@ def parse_args(args):
 
     parser = argparse.ArgumentParser(description="SCORCH 1.0")
 
-    # empty params dictionary
-    params = {}
+    requiredNamed = parser.add_argument_group('required named arguments')
     
-    parser.add_argument('-l','--ligand', help="""Ligands to score against the supplied receptor. 
+    requiredNamed.add_argument('-l','--ligand', help="""Ligands to score against the supplied receptor. 
                                                  Can be a .smi or .txt filepath, a .pdbqt filepath, or path to a folder of pdbqt files. 
                                                  If .smi file is supplied, --range and --center args or --ref_lig args are 
-                                                 also required.""")
-    parser.add_argument('-r','--receptor', help="Receptor to score ligands against. Must be a filepath to a .pdbqt file")
+                                                 also required.""", required=True)
+    requiredNamed.add_argument('-r','--receptor', help="Receptor to score ligands against. Must be a filepath to a .pdbqt file", required=True)
     parser.add_argument('-rl','--ref_lig', help="Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)")
     parser.add_argument('-t','--threads', default=1, help="Number of CPU threads to parallelise SCORCH over", type=int)
     parser.add_argument('-c','--center', help="'[x, y, z]' coordinates of the center of the binding site for docking")
@@ -560,6 +559,7 @@ def parse_args(args):
     parser.add_argument('-s','--pose_1', action='store_true', help="Consider only the first pose in each pdbqt file to score - NOT RECOMMENDED")
     parser.add_argument('-d','--dock', action='store_true', help="""If supplied, input ligands are assumed to be text SMILES and will be docked 
                                                                     using GWOVina before scoring. This will be autodetected if a .smi or .txt file is supplied""")
+    params = parser.parse_args()
 
     if params.verbose:
         logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -567,16 +567,16 @@ def parse_args(args):
         tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
         logging.basicConfig(level=logging.WARNING, format='%(message)s')
 
-    if os.path.isdir(params['ligand']):
-        params['ligand'] = [os.path.join(params['ligand'], file) for file in os.listdir(params['ligand'])]
-        receptors = [params['receptor'] for i in range(len(params['ligand']))]
-        params['receptor'] = receptors
+    if os.path.isdir(params.ligand):
+        params.ligand = [os.path.join(params.ligand, file) for file in os.listdir(params.ligand)]
+        receptors = [params.receptor for i in range(len(params.ligand))]
+        params.receptor = receptors
 
-    elif '.smi' in params['ligand'] or '.txt' in params['ligand']:
-        params['dock'] = True
+    elif '.smi' in params.ligand or '.txt' in params.ligand:
+        params.dock = True
     else:
-        params['ligand'] = [params['ligand']]
-        params['receptor'] = [params['receptor']]
+        params.ligand = [params.ligand]
+        params.receptor = [params.receptor]
 
     return params
 
@@ -597,8 +597,8 @@ def prepare_and_dock_inputs(params):
     dock_settings = json.load(open(os.path.join('utils','params','dock_settings.json')))
 
     # check there has been a binding site location passed to use for docking
-    if params['ref_lig'] is None:
-        if params['center'] is None and params['range'] is None:
+    if params.ref_lig is None:
+        if params.center is None and params.range is None:
 
             # if not then complain and exit
             logging.critical("ERROR: No reference ligand or binding site coordinates supplied. Try:\n- ensuring center and range values are entered correctly\n- supplying a reference ligand")
@@ -608,12 +608,12 @@ def prepare_and_dock_inputs(params):
         # coordinates variable
         else:
             try:
-                coords = (float(params['center'][0]),
-                            float(params['center'][1]),
-                            float(params['center'][2]),
-                            float(params['range'][0]),
-                            float(params['range'][1]),
-                            float(params['range'][2]))
+                coords = (float(params.center[0]),
+                            float(params.center[1]),
+                            float(params.center[2]),
+                            float(params.range[0]),
+                            float(params.range[1]),
+                            float(params.range[2]))
             
             # if this doesn't work then complain and exit
             except:
@@ -622,7 +622,7 @@ def prepare_and_dock_inputs(params):
 
     # if the user has passed a reference ligand 
     else:
-        coords = get_coordinates(params['ref_lig'], dock_settings['padding'])
+        coords = get_coordinates(params.ref_lig, dock_settings['padding'])
 
     # make sure all temporary folders exist
     if not os.path.isdir(os.path.join('utils','temp','pdb_files')):
@@ -645,13 +645,13 @@ def prepare_and_dock_inputs(params):
 
     # load the smiles from the input file as a dictionary
     # with an identifier as the key and the smile string as the value
-    smi_dict = get_smiles(params['ligand'])
+    smi_dict = get_smiles(params.ligand)
 
     logging.info('Generating 3D pdbs from SMILES...')
 
     # parallelise the conversion of smiles strings to 3D pdbqts with RDKit
     with tqdm_joblib(tqdm(desc="Generating...", total=len(smi_dict))) as progress_bar:
-        Parallel(n_jobs=params['threads'])(delayed(make_pdbs_from_smiles)(smi) for smi in smi_dict.items())
+        Parallel(n_jobs=params.threads)(delayed(make_pdbs_from_smiles)(smi) for smi in smi_dict.items())
 
     # get a list of all successfully converted pdbs
     pdbs = os.listdir(os.path.join('utils','temp','pdb_files',''))
@@ -660,7 +660,7 @@ def prepare_and_dock_inputs(params):
 
     # parallelise conversion of pdbs to pdbqt files
     with tqdm_joblib(tqdm(desc="Converting...", total=len(pdbs))) as progress_bar:
-        Parallel(n_jobs=params['threads'])(delayed(autodock_convert)(pdb_file, os.path.join('utils','MGLTools-1.5.6','')) for pdb_file in pdbs)
+        Parallel(n_jobs=params.threads)(delayed(autodock_convert)(pdb_file, os.path.join('utils','MGLTools-1.5.6','')) for pdb_file in pdbs)
 
     # get list of successfully converted pdbqts
     pdbqts = get_filepaths(os.path.join('utils','temp','pdbqt_files',''))
@@ -679,7 +679,7 @@ def prepare_and_dock_inputs(params):
         # then dock each one
         dock_file(
                     os.path.join('utils','gwovina-1.0','build',os_name,'release','gwovina'),
-                    params['receptor'],
+                    params.receptor,
                     pdbqt,
                     *coords,
                     dock_settings['gwovina_settings']['exhaustiveness'],
@@ -690,20 +690,20 @@ def prepare_and_dock_inputs(params):
                     )
 
     # get name of the input smiles file
-    if '.' in params['ligand']:
-        docked_ligands_folder = os.path.basename(params['ligand']).split('.')[0]
+    if '.' in params.ligand:
+        docked_ligands_folder = os.path.basename(params.ligand).split('.')[0]
     else:
-        docked_ligands_folder = os.path.basename(params['ligand'])
+        docked_ligands_folder = os.path.basename(params.ligand)
 
     # define folder with the input file name to store the docked ligands
     docked_ligands_path = os.path.join('docked_ligands',docked_ligands_folder,'')
 
-    # add each docked ligand in temp file as a ligand to score to the list of ligands in params['ligand']
-    params['ligand'] = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
+    # add each docked ligand in temp file as a ligand to score to the list of ligands in params.ligand
+    params.ligand = [os.path.join('utils','temp','docked_pdbqt_files', file) for file in os.listdir(os.path.join('utils','temp','docked_pdbqt_files'))]
     
     # build receptor as a repeating list into params dict
-    receptors = [params['receptor'] for i in range(len(params['ligand']))]
-    params['receptor'] = receptors
+    receptors = [params.receptor for i in range(len(params.ligand))]
+    params.receptor = receptors
 
     # make sure the docked ligands folder exists
     if not os.path.isdir('docked_ligands'):
@@ -712,7 +712,7 @@ def prepare_and_dock_inputs(params):
         os.makedirs(docked_ligands_path)
     
     # copy the docked ligands into a main folder so they are accessible
-    for file in params['ligand']:
+    for file in params.ligand:
         shutil.copy(file, docked_ligands_path)   
     
     # return the updated parameters with docked ligands to score and the
@@ -772,7 +772,7 @@ def ligand_pose_generator(params, lower_index, upper_index):
     pose_index = 0
 
     # then for each ligand
-    for ligand_index, ligand_filepath in enumerate(params['ligand']):
+    for ligand_index, ligand_filepath in enumerate(params.ligand):
 
          
          # don't waste any time if we're already over the upper index
@@ -793,7 +793,7 @@ def ligand_pose_generator(params, lower_index, upper_index):
                 pdbqt_pose_blocks.append(pose)
 
                 # stop if we only want one pose
-                if params['pose_1']:
+                if params.pose_1:
                     break
 
         # make a tuple with pdbqt block and pose name
@@ -806,7 +806,7 @@ def ligand_pose_generator(params, lower_index, upper_index):
             if lower_index <= pose_index < upper_index:
             
                 # add it to the receptor ligand arguments
-                receptor_ligand_args = (params['receptor'][ligand_index], ligand_filepath, pose)
+                receptor_ligand_args = (params.receptor[ligand_index], ligand_filepath, pose)
 
                 requested_receptor_ligand_args.append(receptor_ligand_args)
     
@@ -1013,11 +1013,11 @@ def print_intro(params):
 
     logging.info('**************************************************************************\n')
 
-    if not params['dock']:
-        logging.info(f'Found {len(params["ligand"])} ligand(s) for scoring against a single receptor...\n')
+    if not params.dock:
+        logging.info(f'Found {len(params.ligand)} ligand(s) for scoring against a single receptor...\n')
 
     else:
-        ligand_count = open(params["ligand"]).read().split("\n")
+        ligand_count = open(params.ligand).read().split("\n")
         ligand_count = len([l for l in ligand_count if l != ''])
         logging.info(f'Parsed {ligand_count} ligand smiles for docking and scoring against a single receptor...\n')
 
@@ -1048,22 +1048,20 @@ def prepare_models(params):
     models['xgboost_model'] = pickle.load(open(xgb_path,'rb'))
 
     # load best 15 neural network models for WD models and feedforward models
-    logging.info('Feedforward NN Model : Yes')
-    logging.info(f'- Using Best {params["num_networks"]} Networks')
+    logging.info('Feedforward NN Models : Yes')
     models['ff_nn'] = os.path.join('utils','models','ff_nn_models')
     model_ranks = pickle.load(open(os.path.join(models['ff_nn'],'rankings.pkl'),'rb'))
-    model_ranks = model_ranks[:params["num_networks"]]
+    model_ranks = model_ranks[:15]
     models['ff_nn'] = [os.path.join(models['ff_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
 
-    logging.info('W&D NN Model : Yes')
-    logging.info(f'- Using Best {params["num_networks"]} Networks')
+    logging.info('W&D NN Models : Yes')
     models['wd_nn'] = os.path.join('utils','models','wd_nn_models')
     model_ranks = pickle.load(open(os.path.join(models['wd_nn'],'rankings.pkl'),'rb'))
-    model_ranks = model_ranks[:params["num_networks"]]
+    model_ranks = model_ranks[:15]
     models['wd_nn'] = [os.path.join(models['wd_nn'], 'models',f'{model[1]}.hdf5') for model in model_ranks]
     logging.info('\n')
 
-    if params['pose_1']:
+    if params.pose_1:
 
         logging.info('Calculating scores for first pose only in pdbqt file(s)\n')
 
@@ -1084,7 +1082,7 @@ def score_ligand_batch(params, ligand_batch, model_binaries):
 
     # multiprocess the extracting of features from the protein ligand pairs
     with tqdm_joblib(tqdm(desc="Preparing features", total=len(ligand_batch))) as progress_bar:
-        multi_pose_features = Parallel(n_jobs=params['threads'])(delayed(prepare_features)(ligand) for ligand in ligand_batch)
+        multi_pose_features = Parallel(n_jobs=params.threads)(delayed(prepare_features)(ligand) for ligand in ligand_batch)
 
     # concatenate all the produced features
     multi_pose_features = pd.concat(multi_pose_features)
@@ -1152,7 +1150,7 @@ def create_final_results(params, ligand_scores):
     final_ligand_scores['best_pose'] = np.where(final_ligand_scores.SCORCH_score == final_ligand_scores.SCORCH_pose_score, 1, 0)
 
     # if the user doesnt want pose scores then remove all but the best scoring pose
-    if not params['return_pose_scores']:
+    if not params.return_pose_scores:
         final_ligand_scores = final_ligand_scores.loc[final_ligand_scores.best_pose == 1]
 
         # only return specified columns
@@ -1190,7 +1188,7 @@ def scoring(params):
     print_intro(params)
 
     # prepare and dock smiles if smiles ligands supplied
-    if params['dock']:
+    if params.dock:
 
        params, smi_dict = prepare_and_dock_inputs(params)
 
@@ -1200,10 +1198,10 @@ def scoring(params):
 
     
     # count input poses
-    if params['pose_1']:
-        total_poses = len(params['ligand'])
+    if params.pose_1:
+        total_poses = len(params.ligand)
     else:
-        total_poses = count_input_poses(params['ligand'])
+        total_poses = count_input_poses(params.ligand)
 
     # calculate how many scoring batches we need with the system memory available
     batches_needed = calculate_batches_needed(total_poses)
@@ -1242,7 +1240,7 @@ def scoring(params):
     final_ligand_scores = create_final_results(params, ligand_scores)
 
     # if we have docked the ligands then add column for their smiles strings
-    if params['dock']:
+    if params.dock:
         final_ligand_scores['Ligand_SMILE'] = final_ligand_scores['Ligand_ID'].map(smi_dict)
 
 
@@ -1261,7 +1259,7 @@ if __name__ == "__main__":
     scoring_function_results = scoring(params)
 
     # output results
-    if not params['out']:
+    if not params.out:
 
         # send to stdout if no outfile given
         sys.stdout.write(scoring_function_results.to_csv(index=False))
@@ -1269,7 +1267,7 @@ if __name__ == "__main__":
     else:
 
         # otherwise save to user specified csv
-        scoring_function_results.to_csv(params['out'], index=False)
+        scoring_function_results.to_csv(params.out, index=False)
 
 
 # scorch.py end
