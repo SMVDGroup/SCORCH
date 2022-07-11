@@ -85,17 +85,17 @@ The scoring function is supplied as the Python script `scorch.py`. Its main argu
 
 |Argument     |Value                                                                                     |Importance                  |
 |-------------|------------------------------------------------------------------------------------------|----------------------------|
-|`-receptor`    |Filepath to receptor file (pdbqt)                                                       |Essential                   |
-|`-ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                 |Essential                   |
-|`-ref_lig`    |Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)       |Essential for SMILES ligands (unless `-center` and `-range` supplied)|
-|`-center`     | '[x, y, z]' coordinates of the center of the binding site for docking                       |Essential for SMILES ligands (unless `-ref_lig` supplied)|
-|`-range`     | '[x, y, z]' axis lengths to define a box around `-center` coordinates for docking            |Essential for SMILES ligands (unless `-ref_lig` supplied)|
-|`-out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
-|`-return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
-|`-threads`     |Number of threads to use                                                                |Optional (Default 1)        |
-|`-verbose`     |If supplied, progress bars and indicators are displayed while scoring                  |Optional (Default False)    |
+|`-r, --receptor`    |Filepath to receptor file (pdbqt)                                                       |Essential                   |
+|`-l, --ligand `     |Filepath to ligand(s) (pdbqt or SMILES)                                                 |Essential                   |
+|`-rl, --ref_lig`    |Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)       |Essential for SMILES ligands (unless `--center` and `--range` supplied)|
+|`-c, --center`     | '[x, y, z]' coordinates of the center of the binding site for docking                       |Essential for SMILES ligands (unless `--ref_lig` supplied)|
+|`-ra, --range`     | '[x, y, z]' axis lengths to define a box around `--center` coordinates for docking            |Essential for SMILES ligands (unless `--ref_lig` supplied)|
+|`-o, --out`         |Filepath for output csv (If not supplied, scores are written to stdout)                  |Optional (Default stdout)   |
+|`-p, --return_pose_scores` |If supplied, scoring values for individual poses in each ligand file are returned | Optional (Default False) |
+|`-t, --threads`     |Number of threads to use                                                                |Optional (Default 1)        |
+|`-v, --verbose`     |If supplied, progress bars and indicators are displayed while scoring                  |Optional (Default False)    |
 
-For further details on arguments, run `python scorch.py -h`.
+For further details on arguments, run `python scorch.py --h`.
 
 ### Docking and Scoring SMILES Ligands Against a Receptor
 
@@ -103,24 +103,24 @@ SCORCH includes a full pipeline to convert SMILES ligands to `.pdbqt` files usin
 
 ```bash
 python scorch.py \
--receptor examples/smiles_REPTIN/reptin_receptor.pdbqt \
--ligand examples/smiles_REPTIN/reptin_smiles.smi  \
--ref_lig examples/smiles_REPTIN/reptin_ref_lig.pdbqt \
--out scoring_results.csv
+--receptor examples/smiles_REPTIN/reptin_receptor.pdbqt \
+--ligand examples/smiles_REPTIN/reptin_smiles.smi  \
+--ref_lig examples/smiles_REPTIN/reptin_ref_lig.pdbqt \
+--out scoring_results.csv
 ```
 
-The binding site for docking can be defined with a reference ligand as above with `-ref_lig`, or by supplying `-center` and `-range` values in the same way as for molecular docking software:
+The binding site for docking can be defined with a reference ligand as above with `--ref_lig`, or by supplying `--center` and `--range` values in the same way as for molecular docking software:
 
 ```bash
 python scorch.py \
--receptor examples/smiles_REPTIN/reptin_receptor.pdbqt \
--ligand examples/smiles_REPTIN/reptin_smiles.smi  \
--center '[23.981,-42.667,67.156]' \
--range '[16.5,14.25,16.5]' \
--out scoring_results.csv
+--receptor examples/smiles_REPTIN/reptin_receptor.pdbqt \
+--ligand examples/smiles_REPTIN/reptin_smiles.smi  \
+--center '[23.981,-42.667,67.156]' \
+--range '[16.5,14.25,16.5]' \
+--out scoring_results.csv
 ```
 
-The `-ligand` input should be supplied as `.smi`  or `.txt` file, with one SMILES ligand and an optional identifier per line, as in this example:
+The `--ligand` input should be supplied as `.smi`  or `.txt` file, with one SMILES ligand and an optional identifier per line, as in this example:
 
 ```bash
 CCC(CC)O[C@@H]1C=C(C[C@H]([C@H]1NC(=O)C)O)C(=O)OCC 49817880
@@ -136,22 +136,22 @@ For scoring a single ligand - `examples/predocked_1a0q/ligands/1a0q_docked_ligan
 
 ```bash
 python scorch.py \
--receptor examples/predocked_1a0q/1a0q_receptor.pdbqt \
--ligand examples/predocked_1a0q/ligands/1a0q_docked_ligand.pdbqt
+--receptor examples/predocked_1a0q/1a0q_receptor.pdbqt \
+--ligand examples/predocked_1a0q/ligands/1a0q_docked_ligand.pdbqt
 ```
 
-For scoring all `.pdbqt` ligands in the directory - `examples/predocked_1a0q/ligands/` - against a single receptor - `examples/predocked_1a0q/1a0q_receptor.pdbqt` - just supply the directory path to the `-ligand` argument:
+For scoring all `.pdbqt` ligands in the directory - `examples/predocked_1a0q/ligands/` - against a single receptor - `examples/predocked_1a0q/1a0q_receptor.pdbqt` - just supply the directory path to the `--ligand` argument:
 
 ```bash
 python scorch.py \
--receptor examples/predocked_1a0q/1a0q_receptor.pdbqt \
--ligand examples/predocked_1a0q/ligands/ \
+--receptor examples/predocked_1a0q/1a0q_receptor.pdbqt \
+--ligand examples/predocked_1a0q/ligands/ \
 # this writes the output scores to a file
--out scoring_results.csv \
+--out scoring_results.csv \
 # this parallelises the scoring over 6 threads
--threads 6 \
+--threads 6 \
 # this displays scoring progress
--verbose
+--verbose
 ```
 
 ### Importing SCORCH as a Python module
@@ -175,7 +175,7 @@ print(output)
 
 # Output
 
-Scores are output in `.csv` format. For example, scoring a single ligand `.pdbqt` file with 10 docked poses on a single receptor, using the `-return_pose_scores` flag, yielded the following output. Note that the output of SCORCH includes a measure of the prediction certainty.
+Scores are output in `.csv` format. For example, scoring a single ligand `.pdbqt` file with 10 docked poses on a single receptor, using the `--return_pose_scores` flag, yielded the following output. Note that the output of SCORCH includes a measure of the prediction certainty.
 
 |Receptor      |Ligand        |SCORCH_pose_score|SCORCH_certainty|Ligand_ID|SCORCH_score|best_pose|
 |--------------|--------------|-----------------|----------------|---------|------------|---------|
