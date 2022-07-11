@@ -545,78 +545,38 @@ def parse_args(args):
     # empty params dictionary
     params = {}
     
-    parser.add_argument('-l','--ligand', )
-        try:
-            params['threads'] = int(args[args.index('-threads') + 1])
-        except:
-            params['threads'] = 1
-        try:
-            params['ref_lig'] = args[args.index('-ref_lig') + 1]
-        except:
-            params['ref_lig'] = None
-        try:
-            params['center'] = json.loads(args[args.index('-center') + 1])
-        except:
-            params['center'] = None
-        try:
-            params['range'] = json.loads(args[args.index('-range') + 1])
-        except:
-            params['range'] = None
-        try:
-            params['out'] = args[args.index('-out') + 1]
-        except:
-            params['out'] = False
+    parser.add_argument('-l','--ligand', help="""Ligands to score against the supplied receptor. 
+                                                 Can be a .smi or .txt filepath, a .pdbqt filepath, or path to a folder of pdbqt files. 
+                                                 If .smi file is supplied, --range and --center args or --ref_lig args are 
+                                                 also required.""")
+    parser.add_argument('-r','--receptor', help="Receptor to score ligands against. Must be a filepath to a .pdbqt file")
+    parser.add_argument('-rl','--ref_lig', help="Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)")
+    parser.add_argument('-t','--threads', default=1, help="Number of CPU threads to parallelise SCORCH over", type=int)
+    parser.add_argument('-c','--center', help="'[x, y, z]' coordinates of the center of the binding site for docking")
+    parser.add_argument('-ra','--range', help="'[x, y, z]' axis lengths to define a box around --center coordinates for docking")
+    parser.add_argument('-o','--out', help="Filepath for output csv (If not supplied, scores are written to stdout)")
+    parser.add_argument('-p','--return_pose_scores', action='store_true', help="If supplied, scoring values for individual poses in each ligand file are returned")
+    parser.add_argument('-v','--verbose', action='store_true', help="If supplied, progress bars and indicators are displayed while scoring")
+    parser.add_argument('-s','--pose_1', action='store_true', help="Consider only the first pose in each pdbqt file to score - NOT RECOMMENDED")
+    parser.add_argument('-d','--dock', action='store_true', help="""If supplied, input ligands are assumed to be text SMILES and will be docked 
+                                                                    using GWOVina before scoring. This will be autodetected if a .smi or .txt file is supplied""")
 
-        params['screen'] = False
-        params['single'] = False
-        params['pose_1'] = False
-        params['return_pose_scores'] = False
-        params['dock'] = False
-        params['concise'] = True
-        params['num_networks'] = 15
+    if params.verbose:
+        logging.basicConfig(level=logging.INFO, format='%(message)s')
+    else:
+        tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
+        logging.basicConfig(level=logging.WARNING, format='%(message)s')
 
-        if '-verbose' in args:
-            params['verbose'] = True
-            logging.basicConfig(level=logging.INFO, format='%(message)s')
-        else:
-            params['verbose'] = False
-            tqdm.__init__ = partialmethod(tqdm.__init__, disable=True)
-            logging.basicConfig(level=logging.WARNING, format='%(message)s')
+    if os.path.isdir(params['ligand']):
+        params['ligand'] = [os.path.join(params['ligand'], file) for file in os.listdir(params['ligand'])]
+        receptors = [params['receptor'] for i in range(len(params['ligand']))]
+        params['receptor'] = receptors
 
-        if '-return_pose_scores' in args:
-            params['return_pose_scores'] = True
-
-        if '-pose_1' in args:
-            params['pose_1'] = True
-
-        if '-detailed' in args:
-            params['concise'] = False
-
-        elif os.path.isdir(params['ligand']) == True:
-            params['ligand'] = [os.path.join(params['ligand'], file) for file in os.listdir(params['ligand'])]
-            receptors = [params['receptor'] for i in range(len(params['ligand']))]
-            params['receptor'] = receptors
-            params['screen'] = True
-
-        elif '.smi' in params['ligand'] or '.txt' in params['ligand']:
-            params['dock'] = True
-
-        else:
-            params['ligand'] = [params['ligand']]
-            params['receptor'] = [params['receptor']]
-            params['single'] = True
-
-        if '-num_networks' in args:
-            params['num_networks'] = int(args[args.index('-num_networks') + 1])
-
-
-
-    except ValueError as e:
-        if 'is not in list' in str(e):
-            missing = str(e).replace("'",'').replace(' is not in list','')
-            logging.critical(f'Error: essential argument {missing} not supplied')
-            logging.critical('Run "python scoring.py -h" for usage instructions')
-            sys.exit()
+    elif '.smi' in params['ligand'] or '.txt' in params['ligand']:
+        params['dock'] = True
+    else:
+        params['ligand'] = [params['ligand']]
+        params['receptor'] = [params['receptor']]
 
     return params
 
