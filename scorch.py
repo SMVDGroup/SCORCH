@@ -541,15 +541,18 @@ def parse_args(args):
     Output: Populated params dictionary     
     """
 
-    parser = argparse.ArgumentParser(description="SCORCH 1.0")
+    parser = argparse.ArgumentParser(description="SCORCH 1.0\nMiles McGibbon, Samuel Money-Kyrle, Vincent Blay & Douglas R. Houston")
 
     requiredNamed = parser.add_argument_group('required named arguments')
-    
+     
+    # add required arguments
     requiredNamed.add_argument('-l','--ligand', help="""Ligands to score against the supplied receptor. 
                                                  Can be a .smi or .txt filepath, a .pdbqt filepath, or path to a folder of pdbqt files. 
                                                  If .smi file is supplied, --range and --center args or --ref_lig args are 
                                                  also required.""", required=True)
     requiredNamed.add_argument('-r','--receptor', help="Receptor to score ligands against. Must be a filepath to a .pdbqt file", required=True)
+
+    # add optional arguments
     parser.add_argument('-rl','--ref_lig', help="Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)")
     parser.add_argument('-t','--threads', default=1, help="Number of CPU threads to parallelise SCORCH over", type=int)
     parser.add_argument('-c','--center', help="'[x, y, z]' coordinates of the center of the binding site for docking")
@@ -609,16 +612,18 @@ def prepare_and_dock_inputs(params):
         # coordinates variable
         else:
             try:
-                coords = (float(params.center[0]),
-                            float(params.center[1]),
-                            float(params.center[2]),
-                            float(params.range[0]),
-                            float(params.range[1]),
-                            float(params.range[2]))
+                center_coords = json.loads(params.center)
+                center_range = json.loads(params.range)
+                coords = (float(center_coords[0]),
+                            float(center_coords[1]),
+                            float(center_coords[2]),
+                            float(center_range[0]),
+                            float(center_range[1]),
+                            float(center_range[2]))
             
             # if this doesn't work then complain and exit
             except:
-                logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. Try:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
+                logging.critical("\nERROR: Binding site coordinates for docking are missing or incorrectly defined. \nTry:\n- ensuring center and range values are entered correctly\n- using a reference ligand instead")
                 sys.exit()
 
     # if the user has passed a reference ligand 
