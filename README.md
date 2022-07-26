@@ -29,7 +29,7 @@ To install SCORCH on Linux:
 
 ```bash
 # clone the GitHub repository
-env GIT_SSL_NO_VERIFY=true git clone https://gitfront.io/r/mmcgibbon/cff5aca4804137fbf88d4c7357b32f0cd1c20ad1/SCORCH.git
+git clone https://github.com/SMVDGroup/SCORCH.git
 
 # ensure setup.sh is executable
 cd SCORCH
