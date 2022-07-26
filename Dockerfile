@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 RUN yes | apt-get update
 RUN yes | apt-get upgrade
 RUN yes | apt-get install --no-install-recommends git wget
-RUN cd home; git clone https://github.com/SMVDGroup/SCORCH.git
+RUN git config --global http.sslverify false; cd home; git clone https://github.com/SMVDGroup/SCORCH.git
 RUN TZ=Europe/London
 RUN cd /home/SCORCH; chmod +x setup.sh
 RUN cd /home/SCORCH; ./setup.sh
