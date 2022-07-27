@@ -7,4 +7,4 @@ RUN TZ=Europe/London
 RUN cd /home/SCORCH; chmod +x setup.sh
 RUN cd /home/SCORCH; ./setup.sh
 CMD source /root/.bashrc && conda clean -a
-CMD conda activate scorch; cd /home/SCORCH; python scorch.py -receptor examples/predocked_1a0q/1a0q_receptor.pdbqt -ligand examples/predocked_1a0q/ligands/1a0q_docked_ligand.pdbqt
+CMD conda activate scorch; cd /home/SCORCH; python scorch.py --receptor examples/predocked_1a0q/1a0q_receptor.pdbqt --ligand examples/predocked_1a0q/ligands/1a0q_docked_ligand.pdbqt
