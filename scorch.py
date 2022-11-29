@@ -922,7 +922,7 @@ def prepare_features(receptor_ligand_args):
     receptor_filepath = receptor_ligand_args[0]
     ligand_filepath = receptor_ligand_args[1]
     ligand_basename = os.path.basename(ligand_filepath)
-    ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
+    ligand_basename = ligand_basename.replace('.pdbqt' if '.pdbqt' in ligand_basename else '.dlg', ligand_pose_number)
     receptor_basename = os.path.basename(receptor_filepath)
 
     # extract the interaction features
