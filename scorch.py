@@ -272,7 +272,6 @@ def kier_flexibility(ligand_pdbqt_block):
                                             
     Output: Kier flexibility                
     """
-
     # parse pdbqt block
     mol = kier.SmilePrep(ligand_pdbqt_block)
 
@@ -318,7 +317,6 @@ def extract(ligand_pdbqt_block, receptor_filepath):
     Output: All protein-ligand complex      
     descriptor features as a DataFrame      
     """
-    
     # get the kier flexibility
     k = kier_flexibility(ligand_pdbqt_block)
 
@@ -383,8 +381,18 @@ def multiple_pose_check(ligand_filepath):
 
     # for each pose clean up any whitespace or empty lines
     for pose in lig_poses:
+        if "AutoDock-GPU version" in pose:
+            continue
         lines = pose.split('\n')
-        clean_lines = [line for line in lines if not line.strip().lstrip().isnumeric() and 'ENDMDL' not in line]
+        clean_lines = []
+        # clean_lines = [line for line in lines if not line.strip().lstrip().isnumeric() and 'ENDMDL' not in line]
+        for line in lines:
+            if 'ENDMDL' in line or 'DOCKED: TER' in line:
+                clean_lines.append("")
+                break
+
+            if not line.strip().lstrip().isnumeric() and "DOCKED: USER" not in line:
+                clean_lines.append(line.replace('DOCKED: ', ""))
 
         # if there are less than three lines then
         # its an artefact of the splitting and we ignore 
@@ -546,11 +554,11 @@ def parse_args(args):
     requiredNamed = parser.add_argument_group('required named arguments')
      
     # add required arguments
-    requiredNamed.add_argument('-l','--ligand', help="""Ligands to score against the supplied receptor. 
+    requiredNamed.add_argument('-l', '--ligand', help="""Ligands to score against the supplied receptor. 
                                                  Can be a .smi or .txt filepath, a .pdbqt filepath, or path to a folder of pdbqt files. 
                                                  If .smi file is supplied, --range and --center args or --ref_lig args are 
                                                  also required.""", required=True)
-    requiredNamed.add_argument('-r','--receptor', help="Receptor to score ligands against. Must be a filepath to a .pdbqt file", required=True)
+    requiredNamed.add_argument('-r', '--receptor', help="Receptor to score ligands against. Must be a filepath to a .pdbqt file", required=True)
 
     # add optional arguments
     parser.add_argument('-rl','--ref_lig', help="Filepath to example ligand in receptor binding site (mol, mol2, sdf, pdb or pdbqt)")
@@ -790,8 +798,19 @@ def ligand_pose_generator(params, lower_index, upper_index):
         lig_text = open(ligand_filepath, 'r').read()
         lig_poses = lig_text.split('MODEL')
         for pose in lig_poses:
+            if "AutoDock-GPU version" in pose:
+                continue
             lines = pose.split('\n')
-            clean_lines = [line for line in lines if not line.strip().lstrip().isnumeric() and 'ENDMDL' not in line]
+            # clean_lines = [line for line in lines if not line.strip().lstrip().isnumeric() and 'ENDMDL' not in line]
+            clean_lines = []
+            for line in lines:
+                if 'ENDMDL' in line or 'DOCKED: TER' in line:
+                    clean_lines.append("")
+                    break
+
+                if not line.strip().lstrip().isnumeric() and "DOCKED: USER" not in line:
+                    clean_lines.append(line.replace('DOCKED: ', ""))
+
             if len(clean_lines) < 3:
                 pass
             else:
@@ -895,7 +914,6 @@ def prepare_features(receptor_ligand_args):
     Output:   A single row dataframe of protein-ligand complex
               features                      
     """
-
     # grab the ligand pose number and pdbqt string block
     ligand_pose_number = receptor_ligand_args[2][0]
     ligand_pdbqt_block = receptor_ligand_args[2][1]
@@ -904,7 +922,7 @@ def prepare_features(receptor_ligand_args):
     receptor_filepath = receptor_ligand_args[0]
     ligand_filepath = receptor_ligand_args[1]
     ligand_basename = os.path.basename(ligand_filepath)
-    ligand_basename = ligand_basename.replace('.pdbqt', ligand_pose_number)
+    ligand_basename = ligand_basename.replace('.pdbqt' if '.pdbqt' in ligand_basename else '.dlg', ligand_pose_number)
     receptor_basename = os.path.basename(receptor_filepath)
 
     # extract the interaction features
@@ -1235,7 +1253,7 @@ def scoring(params):
 
         # load in ligands to score for this batch
         ligand_batch = ligand_pose_generator(params, index_range[0], index_range[1])
-        
+
         # score the batch and get the results
         merged_results = score_ligand_batch(params, ligand_batch, model_binaries)
 
